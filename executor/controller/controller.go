@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"git.loadtests.me/loadtests/loadtests/executor/persister"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -43,7 +42,7 @@ func (f *FileExecutorStarter) WaitForInstructions() (string, error) {
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger
-func (f *FileExecutorStarter) RunInstructions(persister persister.Persister) error {
+func (f *FileExecutorStarter) RunInstructions(persister Persister) error {
 	// The file should only contain the ip that should be pinged
 	ip, err := ioutil.ReadFile(f.file)
 	if err != nil {
@@ -60,9 +59,7 @@ func (f *FileExecutorStarter) RunInstructions(persister persister.Persister) err
 	}
 	_ = resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("error status code: %d, %v", resp.StatusCode, resp.Status)
-	}
+	persister.Persist(fmt.Sprintf("%q: %d", string(ip), resp.StatusCode))
 
 	return nil
 }

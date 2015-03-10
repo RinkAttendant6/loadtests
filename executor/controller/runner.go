@@ -1,13 +1,9 @@
 package controller
 
-import (
-	"git.loadtests.me/loadtests/loadtests/executor/persister"
-)
-
 // ExecutorStarter is an interface that will be used to execute the scripts
 type ExecutorStarter interface {
 	WaitForInstructions() (string, error)
-	RunInstructions(persister persister.Persister) error
+	RunInstructions(persister Persister) error
 }
 
 // Persister is an interface to save whatever data is grabbed from the executor

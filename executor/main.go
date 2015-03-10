@@ -8,12 +8,12 @@ import (
 
 func main() {
 	log.SetFlags(0)
-	fp := persister.Persister(&persister.FilePersister{})
+	fp := controller.Persister(&persister.FilePersister{})
 	ec := controller.ExecutorStarter(controller.NewFileExecutorStarter("./test_data"))
 
 	err := controller.Execute(ec, fp)
 	if err != nil {
 		log.Fatalf("couldn't execute: %v", err)
 	}
-	log.Printf("ok!")
+	log.Printf("finished!")
 }
