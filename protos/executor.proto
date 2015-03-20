@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package executorGRPC;
+
+service Commander {
+	 rpc ExecuteCommand (CommandMessage) returns (StatusMessage) {}
+}
+
+
+message StatusMessage {
+	string status = 1;
+	string error = 2;
+}
+
+message CommandMessage {
+	string IP = 1;
+	int32 numTimes = 2;
+	string scriptName = 3;
+}
+

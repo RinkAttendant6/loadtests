@@ -4,12 +4,14 @@ FROM golang
 
 # Copy the local package files to the container's workspace.
 ADD . $GOPATH/src/git.loadtests.me/loadtests/loadtests/executor
-ADD test_data ./test_data
 
 # Build the outyet command inside the container.
 # (You may fetch or manage dependencies here,
 # either manually or with a tool like "godep".)
+RUN go get github.com/golang/protobuf/proto
+RUN go get google.golang.org/grpc
 RUN go install git.loadtests.me/loadtests/loadtests/executor
 
+EXPOSE 50051
 # Run the outyet command by default when the container starts.
-ENTRYPOINT /go/bin/executor
+ENTRYPOINT /go/bin/executor localhost

@@ -2,7 +2,6 @@ package controller
 
 // ExecutorStarter is an interface that will be used to execute the scripts
 type ExecutorStarter interface {
-	WaitForInstructions() (string, error)
 	RunInstructions(persister Persister) error
 }
 
@@ -13,12 +12,8 @@ type Persister interface {
 }
 
 // Execute is a generic function that take the two interfaces and runs the impletmentation while checking for errors
-func Execute(executor ExecutorStarter, persister Persister) error {
-	scriptName, err := executor.WaitForInstructions()
-	if err != nil {
-		return err
-	}
-	err = persister.SetScriptName(scriptName)
+func Execute(executor ExecutorStarter, persister Persister, scriptName string) error {
+	err := persister.SetScriptName(scriptName)
 	if err != nil {
 		return err
 	}

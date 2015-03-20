@@ -6,6 +6,5 @@ go run main.go
 The IP or URL to ping is in the test_data/test file. It is defaulted to www.google.com
 
 TODO:
-Figure out how to better organize the interfaces
-Implement remote ExecutorControllers and Persisters
+Implement influx db persister
 Write test cases
