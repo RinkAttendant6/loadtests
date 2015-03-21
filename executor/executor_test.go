@@ -30,6 +30,24 @@ func TestValidServer(t *testing.T) {
 	wg.Wait()
 }
 
+func TestValidServerNoScheme(t *testing.T) {
+	gp := persister.TestPersister{}
+	testName := "test"
+	server := "www.google.com"
+	wg, s := startServer(t, &gp)
+	r, err := sendMesage(&exgrpc.CommandMessage{IP: server, NumTimes: 2, ScriptName: testName})
+	if err == nil && r.Status != "Error" {
+		verifyResults(2, server, "200", testName, t, &gp)
+	} else {
+		if err != nil {
+			t.Errorf("Error when sending command: %v", err)
+		} else {
+			t.Errorf("Recieved error when executing: %s", r.Error)
+		}
+	}
+	s.Stop()
+	wg.Wait()
+}
 func TestInvalidServerPage(t *testing.T) {
 	gp := persister.TestPersister{}
 	testName := "failurePageTest"
@@ -81,7 +99,7 @@ func TestInvalidServer(t *testing.T) {
 
 func startServer(t *testing.T, gp *persister.TestPersister) (*sync.WaitGroup, *grpc.Server) {
 	// Loop forever, because I will wait for commands from the grpc server
-	wg, s, err := exgrpc.NewGRPCExecutorStarter(gp, ":50051")
+	wg, s, err := exgrpc.NewGRPCExecutorStarter(gp, ":50052")
 	if err != nil {
 		t.Errorf("err starting grpc server %v", err)
 	}
@@ -90,7 +108,7 @@ func startServer(t *testing.T, gp *persister.TestPersister) (*sync.WaitGroup, *g
 func sendMesage(message *exgrpc.CommandMessage) (*exgrpc.StatusMessage, error) {
 	option := grpc.WithTimeout(15 * time.Second)
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("localhost:50051", option)
+	conn, err := grpc.Dial("localhost:50052", option)
 	defer conn.Close()
 	if err != nil {
 		return nil, err

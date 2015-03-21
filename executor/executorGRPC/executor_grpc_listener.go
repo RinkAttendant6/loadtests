@@ -34,6 +34,7 @@ func NewGRPCExecutorStarter(persister controller.Persister, port string) (*sync.
 
 // ExecuteCommand is the server interface for listening for a command
 func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *CommandMessage) (*StatusMessage, error) {
+	log.Printf("Go connection: %v", in)
 	executorController := controller.Controller{IP: in.IP}
 	for i := int32(0); i < in.NumTimes; i++ {
 		err := controller.Execute(executorController, s.persister, in.ScriptName)

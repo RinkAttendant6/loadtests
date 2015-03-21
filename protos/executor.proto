@@ -8,13 +8,13 @@ service Commander {
 
 
 message StatusMessage {
-	string status = 1;
-	string error = 2;
+	optional string status = 1;
+	optional string error = 2;
 }
 
 message CommandMessage {
-	string IP = 1;
-	int32 numTimes = 2;
-	string scriptName = 3;
+	optional string IP = 1;
+	optional int32 numTimes = 2;
+	optional string scriptName = 3;
 }
 

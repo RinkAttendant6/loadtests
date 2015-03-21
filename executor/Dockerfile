@@ -14,4 +14,4 @@ RUN go install git.loadtests.me/loadtests/loadtests/executor
 
 EXPOSE 50051
 # Run the outyet command by default when the container starts.
-ENTRYPOINT /go/bin/executor localhost
+ENTRYPOINT ["/go/bin/executor"]

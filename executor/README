@@ -1,10 +1,11 @@
 Instructions:
 
-To run use: 
-go run main.go
+To test run:
+go test
 
-The IP or URL to ping is in the test_data/test file. It is defaulted to www.google.com
+To run use: 
+go run grpc_main.go
+This will start a grpc server and it will wait for commands
 
 TODO:
 Implement influx db persister
-Write test cases

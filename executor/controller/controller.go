@@ -20,6 +20,10 @@ func (f Controller) RunInstructions(persister Persister) error {
 		return fmt.Errorf("invalid IP: %v", err)
 	}
 
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+
 	resp, err := http.Get(u.String())
 	if err != nil {
 		return fmt.Errorf("can't fetch IP %q: %v", f.IP, err)
