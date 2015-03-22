@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"io"
-
 	"golang.org/x/net/context"
 )
 

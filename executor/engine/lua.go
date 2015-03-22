@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/Shopify/go-lua"
@@ -19,15 +20,23 @@ type LuaProgram struct {
 	info  func(*lua.State) int
 	fatal func(*lua.State) int
 
-	Stdout io.Writer
+	out io.Writer
 }
 
 func Lua(source io.Reader, out io.Writer) (*LuaProgram, error) {
 	l := lua.NewState()
 
 	prgm := &LuaProgram{
-		vm:     l,
-		Stdout: out,
+		vm:  l,
+		out: out,
+		info: func(l *lua.State) int {
+			panic(fmt.Errorf("'info' is not defined outside of steps"))
+			return 0
+		},
+		fatal: func(l *lua.State) int {
+			panic(fmt.Errorf("'fatal' is not defined outside of steps"))
+			return 0
+		},
 	}
 	// setup the `step` hooks
 	configureLua(prgm, l)
@@ -36,11 +45,11 @@ func Lua(source io.Reader, out io.Writer) (*LuaProgram, error) {
 
 	// load the source
 	if err := l.Load(source, "", ""); err != nil {
-		return prgm, err
+		return prgm, fmt.Errorf("compiling program: %v", err)
 	}
 	// invoke the program to prepare the steps
 	if err := l.ProtectedCall(0, 0, 0); err != nil {
-		return prgm, err
+		return prgm, fmt.Errorf("preparing program: %v", err)
 	}
 
 	prgm.configured = true
@@ -50,19 +59,17 @@ func Lua(source io.Reader, out io.Writer) (*LuaProgram, error) {
 
 func (prgm *LuaProgram) Execute(ctx context.Context) error {
 
-	l := prgm.vm
-
 	runNext := true
 	currentStep := "<not a step>"
 
 	prgm.info = func(l *lua.State) int {
 		msg := lua.CheckString(l, 1)
-		fmt.Fprintf(prgm.Stdout, "[INFO] %s: %s", currentStep, msg)
+		fmt.Fprintf(prgm.out, `{"lvl":"info","step":%q,"msg":%q}`+"\n", currentStep, msg)
 		return 0
 	}
 	prgm.fatal = func(l *lua.State) int {
 		msg := lua.CheckString(l, 1)
-		fmt.Fprintf(prgm.Stdout, "[FATAL] %s: %s", currentStep, msg)
+		fmt.Fprintf(prgm.out, `{"lvl":"fatal","step":%q,"msg":%q}`+"\n", currentStep, msg)
 		return 0
 	}
 

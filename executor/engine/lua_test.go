@@ -2,6 +2,7 @@ package engine_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"git.loadtests.me/loadtests/loadtests/executor/engine"
@@ -11,16 +12,35 @@ import (
 func TestLuaEngine(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 
-	script := `info("hello world")`
+	want := `{"lvl":"info","step":"first_step","msg":"hello world"}
+{"lvl":"fatal","step":"second_step","msg":"oh you're still there"}
+`
+
+	script := strings.NewReader(`
+step.first_step = function()
+    info("hello world")
+end
+
+step.second_step = function()
+    fatal("oh you're still there")
+end
+
+step.first_step = function()
+    info("hello world")
+end
+`)
 	prgm, err := engine.Lua(script, buf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err := prgm.Execute(context.Background())
+	err = prgm.Execute(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, got := "hello world", buf.String(); want != got {
-		t.Fatalf("want output %q, got %q", want, got)
+	got := buf.String()
+	if want != got {
+		t.Logf("want=%q", want)
+		t.Logf(" got=%q", got)
+		t.Fatalf("different output")
 	}
 }
