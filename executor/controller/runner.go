@@ -7,7 +7,7 @@ type ExecutorStarter interface {
 
 // Persister is an interface to save whatever data is grabbed from the executor
 type Persister interface {
-	Persist(data string) error
+	Persist(data string, result string) error
 	SetScriptName(name string) error
 }
 

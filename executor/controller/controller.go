@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -30,7 +31,7 @@ func (f Controller) RunInstructions(persister Persister) error {
 	}
 	_ = resp.Body.Close()
 
-	persister.Persist(fmt.Sprintf("%q: %d", string(f.IP), resp.StatusCode))
+	persister.Persist(string(f.IP), strconv.Itoa(resp.StatusCode))
 
 	return nil
 }
