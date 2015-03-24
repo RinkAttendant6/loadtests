@@ -14,7 +14,7 @@ message StatusMessage {
 
 message CommandMessage {
 	optional string IP = 1;
-	optional int32 numTimes = 2;
+	optional string script = 2;
 	optional string scriptName = 3;
 }
 

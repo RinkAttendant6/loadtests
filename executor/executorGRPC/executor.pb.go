@@ -39,7 +39,7 @@ func (*StatusMessage) ProtoMessage()    {}
 
 type CommandMessage struct {
 	IP         string `protobuf:"bytes,1,opt" json:"IP,omitempty"`
-	NumTimes   int32  `protobuf:"varint,2,opt,name=numTimes" json:"numTimes,omitempty"`
+	Script     string `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
 	ScriptName string `protobuf:"bytes,3,opt,name=scriptName" json:"scriptName,omitempty"`
 }
 
