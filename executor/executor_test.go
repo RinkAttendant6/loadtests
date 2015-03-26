@@ -25,6 +25,7 @@ step.first_step = function()
 end`
 }
 func TestValidServer(t *testing.T) {
+	//TODO remove race condition for test cases
 	gp := persister.TestPersister{}
 	testName := "test"
 	server := "http://www.google.com"
@@ -84,6 +85,9 @@ func TestInvalidServerPage(t *testing.T) {
 */
 
 func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
+	if len(gp.Content) < 1 {
+		t.Error("No return")
+	}
 	for i := 0; i < len(gp.Content); i++ {
 		if !strings.Contains(gp.Content[i], server) {
 			t.Errorf("Invalid content: %s", gp.Content[i])
