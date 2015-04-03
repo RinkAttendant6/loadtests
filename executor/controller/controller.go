@@ -16,7 +16,7 @@ type Controller struct {
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger
-func (f Controller) RunInstructions(persister Persister) error {
+func (f *Controller) RunInstructions(persister Persister) error {
 	script := strings.NewReader(f.Script)
 	_, err := engine.Lua(script, nil)
 	if err != nil {
@@ -26,12 +26,12 @@ func (f Controller) RunInstructions(persister Persister) error {
 	return nil
 }
 
-func (f Controller) runScript(persister Persister) {
+func (f *Controller) runScript(persister Persister) {
 	script := strings.NewReader(f.Script)
 	f.execute(script, persister)
 	// TODO decide what to do with an error
 }
-func (f Controller) execute(script io.Reader, persister Persister) error {
+func (f *Controller) execute(script io.Reader, persister Persister) error {
 	prog, err := engine.Lua(script, nil)
 	buf := bytes.NewBuffer(nil)
 	if err != nil {

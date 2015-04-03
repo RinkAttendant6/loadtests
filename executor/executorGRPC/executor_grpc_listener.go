@@ -34,7 +34,7 @@ func NewGRPCExecutorStarter(persister controller.Persister, port string) (*sync.
 
 // ExecuteCommand is the server interface for listening for a command
 func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *CommandMessage) (*StatusMessage, error) {
-	executorController := controller.Controller{IP: in.IP, Script: in.Script, Context: ctx}
+	executorController := &controller.Controller{IP: in.IP, Script: in.Script, Context: ctx}
 	err := controller.Execute(executorController, s.persister, in.ScriptName)
 	if err != nil {
 		log.Printf("Error executing: %v", err)
