@@ -89,7 +89,7 @@ func RegisterCommanderServer(s *grpc.Server, srv CommanderServer) {
 	s.RegisterService(&_Commander_serviceDesc, srv)
 }
 
-func _Commander_ExecuteCommand_Handler(srv interface{}, ctx context.Context, buf []byte) (proto.Message, error) {
+func _Commander_ExecuteCommand_Handler(srv interface{}, ctx context.Context, buf []byte) (interface{}, error) {
 	in := new(CommandMessage)
 	if err := proto.Unmarshal(buf, in); err != nil {
 		return nil, err

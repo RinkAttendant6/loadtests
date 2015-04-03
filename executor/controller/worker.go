@@ -2,8 +2,8 @@ package controller
 
 import (
 	"bytes"
-	"git.loadtests.me/loadtests/loadtests/executor/engine"
-	"git.loadtests.me/loadtests/loadtests/executor/executorGRPC"
+	"github.com/lgpeterson/loadtests/executor/engine"
+	"github.com/lgpeterson/loadtests/executor/executorGRPC"
 	"golang.org/x/net/context"
 	"io"
 	"log"

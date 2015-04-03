@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"git.loadtests.me/loadtests/loadtests/executor/controller"
-	"git.loadtests.me/loadtests/loadtests/executor/persister"
+	"github.com/lgpeterson/loadtests/executor/controller"
+	"github.com/lgpeterson/loadtests/executor/persister"
 	"log"
 	"os"
 )

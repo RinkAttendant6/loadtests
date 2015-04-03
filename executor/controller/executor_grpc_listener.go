@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"git.loadtests.me/loadtests/loadtests/executor/executorGRPC"
+	"github.com/lgpeterson/loadtests/executor/executorGRPC"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"

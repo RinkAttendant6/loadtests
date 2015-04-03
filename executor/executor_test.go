@@ -1,9 +1,9 @@
 package main
 
 import (
-	"git.loadtests.me/loadtests/loadtests/executor/controller"
-	exgrpc "git.loadtests.me/loadtests/loadtests/executor/executorGRPC"
-	"git.loadtests.me/loadtests/loadtests/executor/persister"
+	"github.com/lgpeterson/loadtests/executor/controller"
+	exgrpc "github.com/lgpeterson/loadtests/executor/executorGRPC"
+	"github.com/lgpeterson/loadtests/executor/persister"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"strings"
