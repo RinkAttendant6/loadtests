@@ -1,7 +1,7 @@
-package executorGRPC
+package controller
 
 import (
-	"git.loadtests.me/loadtests/loadtests/executor/controller"
+	"git.loadtests.me/loadtests/loadtests/executor/executorGRPC"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"
@@ -11,11 +11,11 @@ import (
 
 // GRPCExecutorStarter this will read what ip to ping from a file
 type GRPCExecutorStarter struct {
-	persister controller.Persister
+	persister Persister
 }
 
 // NewGRPCExecutorStarter this creates a new GRPCExecutorStarter and sets the directory to look in
-func NewGRPCExecutorStarter(persister controller.Persister, port string) (*sync.WaitGroup, *grpc.Server, error) {
+func NewGRPCExecutorStarter(persister Persister, port string) (*sync.WaitGroup, *grpc.Server, error) {
 	lis, err := net.Listen("tcp", port)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -24,7 +24,7 @@ func NewGRPCExecutorStarter(persister controller.Persister, port string) (*sync.
 	}
 	executorStarter := &GRPCExecutorStarter{persister}
 	s := grpc.NewServer()
-	RegisterCommanderServer(s, executorStarter)
+	executorGRPC.RegisterCommanderServer(s, executorStarter)
 	go func() {
 		s.Serve(lis)
 		wg.Done()
@@ -33,12 +33,12 @@ func NewGRPCExecutorStarter(persister controller.Persister, port string) (*sync.
 }
 
 // ExecuteCommand is the server interface for listening for a command
-func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *CommandMessage) (*StatusMessage, error) {
-	executorController := &controller.Controller{IP: in.IP, Script: in.Script, Context: ctx}
-	err := controller.Execute(executorController, s.persister, in.ScriptName)
+func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *executorGRPC.CommandMessage) (*executorGRPC.StatusMessage, error) {
+	executorController := &Controller{Command: in, Context: ctx}
+	err := Execute(executorController, s.persister, in.ScriptName)
 	if err != nil {
 		log.Printf("Error executing: %v", err)
-		return &StatusMessage{"Error", err.Error()}, nil
+		return &executorGRPC.StatusMessage{"Error", err.Error()}, nil
 	}
-	return &StatusMessage{"OK", ""}, nil
+	return &executorGRPC.StatusMessage{"OK", ""}, nil
 }

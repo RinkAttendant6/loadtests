@@ -16,5 +16,11 @@ message CommandMessage {
 	optional string IP = 1;
 	optional string script = 2;
 	optional string scriptName = 3;
+	optional int32 runTime = 4;
+	optional int32 maxWorkers = 6;
+	optional double growthFactor = 8;
+	optional double timeBetweenGrowth = 9;
+	optional int32 startingRequestsPerSecond = 10;
+	optional int32 maxRequestsPerSecond = 11;
 }
 
