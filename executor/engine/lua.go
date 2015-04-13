@@ -38,10 +38,16 @@ func Lua(source io.Reader, out io.Writer) (*LuaProgram, error) {
 			return 0
 		},
 	}
+
 	// setup the `step` hooks
 	configureLua(prgm, l)
+
 	l.Register("info", func(l *lua.State) int { return prgm.info(l) })
 	l.Register("fatal", func(l *lua.State) int { return prgm.fatal(l) })
+
+	httpBind := newHTTPBinding()
+	l.Register("get", httpBind.get)
+	l.Register("post", httpBind.post)
 
 	// load the source
 	if err := l.Load(source, "", ""); err != nil {
@@ -63,13 +69,13 @@ func (prgm *LuaProgram) Execute(ctx context.Context) error {
 	currentStep := "<not a step>"
 
 	prgm.info = func(l *lua.State) int {
-		msg := lua.CheckString(l, 1)
-		fmt.Fprintf(prgm.out, `{"lvl":"info","step":%q,"msg":%q}`+"\n", currentStep, msg)
+		msg := l.ToValue(1)
+		fmt.Fprintf(prgm.out, `{"lvl":"info","step":%q,"msg":"%v"}`+"\n", currentStep, msg)
 		return 0
 	}
 	prgm.fatal = func(l *lua.State) int {
-		msg := lua.CheckString(l, 1)
-		fmt.Fprintf(prgm.out, `{"lvl":"fatal","step":%q,"msg":%q}`+"\n", currentStep, msg)
+		msg := l.ToValue(1)
+		fmt.Fprintf(prgm.out, `{"lvl":"fatal","step":%q,"msg":"%v"}`+"\n", currentStep, msg)
 		return 0
 	}
 
