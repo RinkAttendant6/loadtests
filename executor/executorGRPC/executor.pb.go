@@ -30,7 +30,6 @@ var _ = proto.Marshal
 
 type StatusMessage struct {
 	Status string `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
-	Error  string `protobuf:"bytes,2,opt,name=error" json:"error,omitempty"`
 }
 
 func (m *StatusMessage) Reset()         { *m = StatusMessage{} }
@@ -38,7 +37,7 @@ func (m *StatusMessage) String() string { return proto.CompactTextString(m) }
 func (*StatusMessage) ProtoMessage()    {}
 
 type CommandMessage struct {
-	IP                        string  `protobuf:"bytes,1,opt" json:"IP,omitempty"`
+	URL                       string  `protobuf:"bytes,1,opt" json:"URL,omitempty"`
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
 	ScriptName                string  `protobuf:"bytes,3,opt,name=scriptName" json:"scriptName,omitempty"`
 	RunTime                   int32   `protobuf:"varint,4,opt,name=runTime" json:"runTime,omitempty"`

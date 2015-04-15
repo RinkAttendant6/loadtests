@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/controller"
 	exgrpc "github.com/lgpeterson/loadtests/executor/executorGRPC"
 	"github.com/lgpeterson/loadtests/executor/persister"
@@ -12,8 +13,8 @@ import (
 	"time"
 )
 
-func getScript() string {
-	return `step.first_step = function()
+const (
+	goodScript = `step.first_step = function()
     info("hello world")
 end
 
@@ -24,17 +25,27 @@ end
 step.first_step = function()
     info("hello world")
 end`
+	badScript = `testtesttesttest test`
+)
+
+func TestInflux(t *testing.T) {
+	put := `{"lvl":"info","step":"first_step","msg":"hello world"}`
+	p := persister.NewInfluxPersister("45.55.129.22:50086", "test")
+	p.Persist("t", "m", []byte(put))
+
 }
 
-func TestValidServer(t *testing.T) {
+func TestValidCode(t *testing.T) {
 	//TODO remove race condition for test cases
 	gp := persister.TestPersister{}
+
+	timeMock := clock.NewMock()
 	testName := "test"
-	server := "http://www.google.com"
-	wg, s := startServer(t, &gp)
+	server := "http://localhost"
+	wg, s := startServer(t, &gp, timeMock)
 	r, err := sendMesage(&exgrpc.CommandMessage{
-		IP:                        server,
-		Script:                    getScript(),
+		URL:                       server,
+		Script:                    goodScript,
 		ScriptName:                testName,
 		RunTime:                   10,
 		MaxWorkers:                100,
@@ -43,20 +54,57 @@ func TestValidServer(t *testing.T) {
 		StartingRequestsPerSecond: 10,
 		MaxRequestsPerSecond:      1000,
 	})
-	time.Sleep(time.Second * 15)
-	if err == nil && r.Status != "Error" {
+	// Create the time when it should be done
+	doneTime := clock.NewMock()
+	// It should be done in 10 seconds
+	doneTime.Add(10 * time.Second)
+
+	// Mock time passage, every 10ms
+	for timeMock.Now().Before(doneTime.Now()) {
+		timeMock.Add(time.Millisecond * 10)
+	}
+
+	// Validate responses
+	if err == nil && r.Status == "OK" {
 		verifyResults(server, t, &gp)
 	} else {
 		if err != nil {
-			t.Errorf("Error when sending command: %v", err)
+			t.Errorf("Error from grpc: %v", err)
 		} else {
-			t.Errorf("Recieved error when executing: %s", r.Error)
+			t.Errorf("Recieved error when executing: %s", r.Status)
 		}
 	}
+
 	s.Stop()
 	wg.Wait()
 }
 
+func TestInvalidCode(t *testing.T) {
+	gp := persister.TestPersister{}
+
+	timeMock := clock.NewMock()
+	testName := "test"
+	server := "http://localhost"
+	wg, s := startServer(t, &gp, timeMock)
+	_, err := sendMesage(&exgrpc.CommandMessage{
+		URL:                       server,
+		Script:                    badScript,
+		ScriptName:                testName,
+		RunTime:                   10,
+		MaxWorkers:                100,
+		GrowthFactor:              1.5,
+		TimeBetweenGrowth:         1,
+		StartingRequestsPerSecond: 10,
+		MaxRequestsPerSecond:      1000,
+	})
+	// Validate responses
+	if err == nil {
+		t.Errorf("No error from server")
+	}
+
+	s.Stop()
+	wg.Wait()
+}
 func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
 	if len(gp.Content) < 1 {
 		t.Error("No return")
@@ -68,13 +116,14 @@ func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
 	}
 }
 
-func startServer(t *testing.T, gp *persister.TestPersister) (*sync.WaitGroup, *grpc.Server) {
+func startServer(t *testing.T, gp *persister.TestPersister, timeMock clock.Clock) (*sync.WaitGroup, *grpc.Server) {
 	// Loop forever, because I will wait for commands from the grpc server
-	wg, s, err := controller.NewGRPCExecutorStarter(gp, ":50052")
+	wg := sync.WaitGroup{}
+	s, err := controller.NewGRPCExecutorStarter(gp, ":50052", &wg, timeMock)
 	if err != nil {
 		t.Errorf("err starting grpc server %v", err)
 	}
-	return wg, s
+	return &wg, s
 }
 
 func sendMesage(message *exgrpc.CommandMessage) (*exgrpc.StatusMessage, error) {

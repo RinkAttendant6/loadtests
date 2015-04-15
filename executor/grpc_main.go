@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/controller"
 	"github.com/lgpeterson/loadtests/executor/persister"
 	"log"
 	"os"
+	"sync"
 )
 
 func main() {
@@ -14,9 +16,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error in getting params: %v", err)
 	}
-	gp := controller.Persister(persister.NewInfluxPersister(influxIP))
+	gp := controller.Persister(persister.NewInfluxPersister(influxIP, "queryResult"))
+	wg := sync.WaitGroup{}
 	// Loop forever, because I will wait for commands from the grpc server
-	wg, _, err := controller.NewGRPCExecutorStarter(gp, ":50051")
+	_, err = controller.NewGRPCExecutorStarter(gp, ":50051", &wg, clock.New())
 	if err != nil {
 		log.Fatalf("err starting grpc server %v", err)
 	}

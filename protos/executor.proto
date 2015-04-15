@@ -9,11 +9,10 @@ service Commander {
 
 message StatusMessage {
 	optional string status = 1;
-	optional string error = 2;
 }
 
 message CommandMessage {
-	optional string IP = 1;
+	optional string URL = 1;
 	optional string script = 2;
 	optional string scriptName = 3;
 	optional int32 runTime = 4;

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/engine"
 	"github.com/lgpeterson/loadtests/executor/executorGRPC"
 	"golang.org/x/net/context"
@@ -13,6 +14,12 @@ import (
 type Controller struct {
 	Command *executorGRPC.CommandMessage
 	Context context.Context
+	Clock   clock.Clock
+}
+
+// Persister is an interface to save whatever data is grabbed from the executor
+type Persister interface {
+	Persist(scriptName string, data string, result []byte) error
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger
@@ -27,56 +34,72 @@ func (f *Controller) RunInstructions(persister Persister) error {
 }
 
 func (f *Controller) runScript(persister Persister) {
-	script := strings.NewReader(f.Command.Script)
 
-	endChannel := make(chan bool)
-	jobChannel := make(chan int)
+	done := make(chan struct{})
+	jobChannel := make(chan struct{})
+	defer close(jobChannel)
 	var wg sync.WaitGroup
 
+	// Create all the workers that will listen for jobs
 	for i := int32(0); i < f.Command.MaxWorkers; i++ {
 		w := &worker{
 			Persist:    persister,
 			Command:    f.Command,
-			Context:    f.Context,
-			Script:     script,
 			Wait:       &wg,
 			JobChannel: jobChannel,
-			EndChannel: endChannel,
+			Done:       done,
 		}
 		go w.execute()
 	}
 
+	requestsPerSecond := int(f.Command.StartingRequestsPerSecond)
+
+	// I want to send jobs every 100 miliseconds
+	tickTimer := time.Millisecond * 100
+	// Find how many jobs to send every tick
+	iterations := getNumberOfIterations(tickTimer, requestsPerSecond)
+
+	ticker := f.Clock.Ticker(tickTimer)
+	defer ticker.Stop()
+
+	growthTicker := f.Clock.Ticker(time.Second * time.Duration(f.Command.TimeBetweenGrowth))
+	growthActive := true
+
 	go func() {
-		time.Sleep(time.Second * time.Duration(f.Command.RunTime))
-		for i := int32(0); i < f.Command.MaxWorkers+1; i++ {
-			endChannel <- true
+		f.Clock.Sleep(time.Second * time.Duration(f.Command.RunTime))
+		close(done)
+		// If the growth ticker has not been closed yet, close it now
+		if growthActive {
+			growthActive = false
+			growthTicker.Stop()
 		}
 	}()
 
-	tickChan := time.NewTicker(time.Millisecond * 100).C
-	growthTicker := time.NewTicker(time.Second * time.Duration(f.Command.TimeBetweenGrowth))
-
-	growthChan := growthTicker.C
-	requestsPerSecond := int(f.Command.StartingRequestsPerSecond)
 	for {
 		select {
-		case <-endChannel:
+		case <-done:
 			wg.Wait()
-			close(endChannel)
 			return
-		case <-tickChan:
-			iterations := requestsPerSecond / 10
+		case <-ticker.C:
 			for i := 1; i < iterations; i++ {
-				jobChannel <- 1
+				jobChannel <- struct{}{}
 			}
-		case <-growthChan:
-			requestsPerSecond = int(float64(requestsPerSecond) * f.Command.GrowthFactor)
-			if requestsPerSecond > int(f.Command.MaxRequestsPerSecond) {
-				requestsPerSecond = int(f.Command.MaxRequestsPerSecond)
-				growthTicker.Stop()
+		case <-growthTicker.C:
+			if growthActive {
+				requestsPerSecond = int(float64(requestsPerSecond) * f.Command.GrowthFactor)
+				if requestsPerSecond > int(f.Command.MaxRequestsPerSecond) {
+					// I've now hit the max request per second, so I can't grow anymore
+					requestsPerSecond = int(f.Command.MaxRequestsPerSecond)
+					growthTicker.Stop()
+					growthActive = false
+				}
+				// The number of jobs per tick will now have increased
+				iterations = getNumberOfIterations(tickTimer, requestsPerSecond)
 			}
 		}
-
 	}
 
+}
+func getNumberOfIterations(tickTimer time.Duration, requestsPerSecond int) int {
+	return int(float64(requestsPerSecond) * tickTimer.Seconds())
 }
