@@ -71,7 +71,7 @@ func (f *InfluxPersister) IncrLogFatal() {}
 
 // Persist saves the data to a file with public permissions
 func (f *InfluxPersister) Persist(scriptName string, site string, result []byte) error {
-	stringResult := string(result)
+	/* stringResult := string(result)
 
 	series := &client.Series{
 		Name:    "test",
@@ -82,4 +82,6 @@ func (f *InfluxPersister) Persist(scriptName string, site string, result []byte)
 	}
 	err := f.client.WriteSeries([]*client.Series{series})
 	return err
+	*/
+	return nil
 }

@@ -20,6 +20,17 @@ type Controller struct {
 // Persister is an interface to save whatever data is grabbed from the executor
 type Persister interface {
 	Persist(scriptName string, data string, result []byte) error
+	IncrScriptExecution()
+
+	IncrStepExecution(string, time.Duration)
+	IncrStepError(string)
+
+	IncrHTTPGet(string, int, time.Duration)
+	IncrHTTPPost(string, int, time.Duration)
+	IncrHTTPError(string)
+
+	IncrLogInfo()
+	IncrLogFatal()
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger

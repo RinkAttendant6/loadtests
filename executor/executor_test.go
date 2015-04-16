@@ -1,12 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/controller"
 	exgrpc "github.com/lgpeterson/loadtests/executor/executorGRPC"
 	"github.com/lgpeterson/loadtests/executor/persister"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -27,16 +30,6 @@ step.first_step = function()
 end`
 	badScript = `testtesttesttest test`
 )
-
-func TestInflux(t *testing.T) {
-	put := `{"lvl":"info","step":"first_step","msg":"hello world"}`
-	p, err := persister.NewInfluxPersister("45.55.129.22:50086", "root", "root")
-	if err != nil {
-		t.Errorf("Error createing persistor: %v", err)
-	}
-	p.Persist("t", "m", []byte(put))
-
-}
 
 func TestValidCode(t *testing.T) {
 	//TODO remove race condition for test cases
@@ -121,7 +114,7 @@ func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
 	}
 }
 
-func startServer(t *testing.T, gp *persister.TestPersister, timeMock clock.Clock) (*sync.WaitGroup, *grpc.Server) {
+func startServer(t *testing.T, gp controller.Persister, timeMock clock.Clock) (*sync.WaitGroup, *grpc.Server) {
 	// Loop forever, because I will wait for commands from the grpc server
 	wg := sync.WaitGroup{}
 	s, err := controller.NewGRPCExecutorStarter(gp, ":50053", &wg, timeMock)
@@ -142,4 +135,74 @@ func sendMesage(message *exgrpc.CommandMessage) (*exgrpc.StatusMessage, error) {
 	c := exgrpc.NewCommanderClient(conn)
 
 	return c.ExecuteCommand(context.Background(), message)
+}
+
+func testInflux(t *testing.T) {
+	p, err := persister.NewInfluxPersister("45.55.129.22:50086", "root", "root")
+	wg, s := startServer(t, p, clock.New())
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.Write([]byte("test"))
+		case "POST":
+		}
+	}))
+	defer srv.Close()
+
+	script := fmt.Sprintf(`
+step.first_step = function()
+	resp = get(%q)
+end
+`, "srv.URL")
+
+	if err != nil {
+		t.Errorf("Error createing persistor: %v", err)
+	}
+
+	_, err = sendMesage(&exgrpc.CommandMessage{
+		URL:                       srv.URL,
+		Script:                    script,
+		ScriptName:                "test",
+		RunTime:                   10,
+		MaxWorkers:                100,
+		GrowthFactor:              1.5,
+		TimeBetweenGrowth:         1,
+		StartingRequestsPerSecond: 10,
+		MaxRequestsPerSecond:      1000,
+	})
+	if err != nil {
+		t.Fatalf("Error from grpc: %v", err)
+	}
+	time.Sleep(time.Second * 20)
+	s.Stop()
+	wg.Wait()
+
+}
+func testActiveServa(t *testing.T) {
+	option := grpc.WithTimeout(15 * time.Second)
+	// Set up a connection to the server.
+	conn, err := grpc.Dial("45.55.159.125:50051", option)
+	defer conn.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := exgrpc.NewCommanderClient(conn)
+	message := &exgrpc.CommandMessage{
+		URL: "htt[://45.55.176.206",
+		Script: `step.first_step = function()
+	resp = get(http://45.55.176.206)
+end`,
+		ScriptName:                "test",
+		RunTime:                   10,
+		MaxWorkers:                100,
+		GrowthFactor:              1.5,
+		TimeBetweenGrowth:         1,
+		StartingRequestsPerSecond: 10,
+		MaxRequestsPerSecond:      1000,
+	}
+	_, err = c.ExecuteCommand(context.Background(), message)
+	if err != nil {
+		t.Fatalf("Error from grpc: %v", err)
+	}
+
 }

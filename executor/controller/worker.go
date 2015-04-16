@@ -27,7 +27,7 @@ func (w *worker) execute() {
 			return
 		case <-w.JobChannel:
 			scriptReader := strings.NewReader(w.Command.Script)
-			prog, err := engine.Lua(scriptReader)
+			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(w.Persist))
 			if err != nil {
 				// This should not be because the script did not compile, if it
 				// did not compile it would be reported to the user before this
