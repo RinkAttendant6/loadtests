@@ -64,15 +64,11 @@ func (f *Controller) runScript(persister Persister) {
 
 	growthTicker := f.Clock.Ticker(time.Second * time.Duration(f.Command.TimeBetweenGrowth))
 	growthActive := true
+	defer growthTicker.Stop()
 
 	go func() {
 		f.Clock.Sleep(time.Second * time.Duration(f.Command.RunTime))
 		close(done)
-		// If the growth ticker has not been closed yet, close it now
-		if growthActive {
-			growthActive = false
-			growthTicker.Stop()
-		}
 	}()
 
 	for {
@@ -90,7 +86,6 @@ func (f *Controller) runScript(persister Persister) {
 				if requestsPerSecond > int(f.Command.MaxRequestsPerSecond) {
 					// I've now hit the max request per second, so I can't grow anymore
 					requestsPerSecond = int(f.Command.MaxRequestsPerSecond)
-					growthTicker.Stop()
 					growthActive = false
 				}
 				// The number of jobs per tick will now have increased
@@ -100,6 +95,7 @@ func (f *Controller) runScript(persister Persister) {
 	}
 
 }
+
 func getNumberOfIterations(tickTimer time.Duration, requestsPerSecond int) int {
 	return int(float64(requestsPerSecond) * tickTimer.Seconds())
 }

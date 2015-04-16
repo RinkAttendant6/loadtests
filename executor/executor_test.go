@@ -30,7 +30,10 @@ end`
 
 func TestInflux(t *testing.T) {
 	put := `{"lvl":"info","step":"first_step","msg":"hello world"}`
-	p := persister.NewInfluxPersister("45.55.129.22:50086", "test")
+	p, err := persister.NewInfluxPersister("45.55.129.22:50086", "root", "root")
+	if err != nil {
+		t.Errorf("Error createing persistor: %v", err)
+	}
 	p.Persist("t", "m", []byte(put))
 
 }
@@ -54,28 +57,30 @@ func TestValidCode(t *testing.T) {
 		StartingRequestsPerSecond: 10,
 		MaxRequestsPerSecond:      1000,
 	})
+	if err != nil {
+		t.Fatalf("Error from grpc: %v", err)
+	}
 	// Create the time when it should be done
 	doneTime := clock.NewMock()
 	// It should be done in 10 seconds
-	doneTime.Add(10 * time.Second)
+	doneTime.Add((10 * time.Second) + time.Second)
+
+	time.AfterFunc(time.Second*5, func() { panic("too long") })
 
 	// Mock time passage, every 10ms
-	for timeMock.Now().Before(doneTime.Now()) {
-		timeMock.Add(time.Millisecond * 10)
-	}
-
-	// Validate responses
-	if err == nil && r.Status == "OK" {
-		verifyResults(server, t, &gp)
-	} else {
-		if err != nil {
-			t.Errorf("Error from grpc: %v", err)
-		} else {
-			t.Errorf("Recieved error when executing: %s", r.Status)
+	go func() {
+		defer s.Stop()
+		for timeMock.Now().Before(doneTime.Now()) {
+			timeMock.Add(time.Millisecond * 10)
 		}
-	}
 
-	s.Stop()
+		// Validate responses
+		if r.Status == "OK" {
+			verifyResults(server, t, &gp)
+		} else {
+			t.Fatalf("Recieved error when executing: %s", r.Status)
+		}
+	}()
 	wg.Wait()
 }
 
@@ -119,7 +124,7 @@ func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
 func startServer(t *testing.T, gp *persister.TestPersister, timeMock clock.Clock) (*sync.WaitGroup, *grpc.Server) {
 	// Loop forever, because I will wait for commands from the grpc server
 	wg := sync.WaitGroup{}
-	s, err := controller.NewGRPCExecutorStarter(gp, ":50052", &wg, timeMock)
+	s, err := controller.NewGRPCExecutorStarter(gp, ":50053", &wg, timeMock)
 	if err != nil {
 		t.Errorf("err starting grpc server %v", err)
 	}
@@ -129,7 +134,7 @@ func startServer(t *testing.T, gp *persister.TestPersister, timeMock clock.Clock
 func sendMesage(message *exgrpc.CommandMessage) (*exgrpc.StatusMessage, error) {
 	option := grpc.WithTimeout(15 * time.Second)
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("localhost:50052", option)
+	conn, err := grpc.Dial("localhost:50053", option)
 	defer conn.Close()
 	if err != nil {
 		return nil, err
