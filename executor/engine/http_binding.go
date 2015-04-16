@@ -4,17 +4,20 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Shopify/go-lua"
 )
 
 type httpBind struct {
-	client *http.Client
+	metrics MetricReporter
+	client  *http.Client
 }
 
-func newHTTPBinding() *httpBind {
+func newHTTPBinding(met MetricReporter) *httpBind {
 	return &httpBind{
-		client: &http.Client{},
+		metrics: met,
+		client:  &http.Client{},
 	}
 }
 
@@ -22,15 +25,21 @@ func (h *httpBind) get(l *lua.State) int {
 
 	u := lua.CheckString(l, -1)
 
+	start := time.Now()
 	resp, err := h.client.Get(u)
 	if err != nil {
+		h.metrics.IncrHTTPError(u)
 		lua.Errorf(l, "lua-http: can't GET: %v", err)
 		return 0
 	}
 	defer resp.Body.Close()
+	defer func() {
+		h.metrics.IncrHTTPGet(u, resp.StatusCode, time.Since(start))
+	}()
 
 	args, err := pushResponse(l, resp)
 	if err != nil {
+		h.metrics.IncrHTTPError(u)
 		lua.Errorf(l, "lua-http: can't read body from GET: %v", err)
 		return args
 	}
@@ -44,15 +53,21 @@ func (h *httpBind) post(l *lua.State) int {
 	contentType := lua.CheckString(l, -2)
 	body := lua.CheckString(l, -1)
 
+	start := time.Now()
 	resp, err := h.client.Post(u, contentType, strings.NewReader(body))
 	if err != nil {
+		h.metrics.IncrHTTPError(u)
 		lua.Errorf(l, "lua-http: can't POST: %v", err)
 		return 0
 	}
 	defer resp.Body.Close()
+	defer func() {
+		h.metrics.IncrHTTPPost(u, resp.StatusCode, time.Since(start))
+	}()
 
 	args, err := pushResponse(l, resp)
 	if err != nil {
+		h.metrics.IncrHTTPError(u)
 		lua.Errorf(l, "lua-http: can't read body from POST: %v", err)
 		return args
 	}

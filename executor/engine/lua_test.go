@@ -33,7 +33,7 @@ step.first_step = function()
     info("hello world")
 end
 `)
-	prgm, err := engine.Lua(script, buf)
+	prgm, err := engine.Lua(script, engine.SetLogger(buf))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ end
 `, srv.URL, srv.URL))
 
 	buf := bytes.NewBuffer(nil)
-	prgm, err := engine.Lua(script, buf)
+	prgm, err := engine.Lua(script, engine.SetLogger(buf))
 	if err != nil {
 		t.Fatal(err)
 	}

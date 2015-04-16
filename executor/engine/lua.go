@@ -3,10 +3,26 @@ package engine
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
+	"time"
 
 	"github.com/Shopify/go-lua"
 	"golang.org/x/net/context"
 )
+
+type LuaOption func(*LuaProgram)
+
+func SetMetricReporter(met MetricReporter) LuaOption {
+	return func(prgm *LuaProgram) {
+		prgm.metrics = met
+	}
+}
+
+func SetLogger(out io.Writer) LuaOption {
+	return func(prgm *LuaProgram) {
+		prgm.out = out
+	}
+}
 
 var _ Program = &LuaProgram{}
 
@@ -17,18 +33,20 @@ type LuaProgram struct {
 	configured bool
 	steps      []string
 
-	info  func(*lua.State) int
-	fatal func(*lua.State) int
+	metrics MetricReporter
+	info    func(*lua.State) int
+	fatal   func(*lua.State) int
 
 	out io.Writer
 }
 
-func Lua(source io.Reader, out io.Writer) (*LuaProgram, error) {
+func Lua(source io.Reader, opts ...LuaOption) (*LuaProgram, error) {
 	l := lua.NewState()
 
 	prgm := &LuaProgram{
-		vm:  l,
-		out: out,
+		vm:      l,
+		out:     ioutil.Discard,
+		metrics: nullMetric{},
 		info: func(l *lua.State) int {
 			panic(fmt.Errorf("'info' is not defined outside of steps"))
 			return 0
@@ -39,13 +57,23 @@ func Lua(source io.Reader, out io.Writer) (*LuaProgram, error) {
 		},
 	}
 
-	// setup the `step` hooks
+	for _, opt := range opts {
+		opt(prgm)
+	}
+
+	// setup the `step` hooksA
 	configureLua(prgm, l)
 
-	l.Register("info", func(l *lua.State) int { return prgm.info(l) })
-	l.Register("fatal", func(l *lua.State) int { return prgm.fatal(l) })
+	l.Register("info", func(l *lua.State) int {
+		prgm.metrics.IncrLogInfo()
+		return prgm.info(l)
+	})
+	l.Register("fatal", func(l *lua.State) int {
+		prgm.metrics.IncrLogFatal()
+		return prgm.fatal(l)
+	})
 
-	httpBind := newHTTPBinding()
+	httpBind := newHTTPBinding(prgm.metrics)
 	l.Register("get", httpBind.get)
 	l.Register("post", httpBind.post)
 
@@ -102,6 +130,7 @@ func (prgm *LuaProgram) runSteps(reporter func(step string) bool) error {
 	l.NewTable()
 	defer l.Pop(2) // cleanup the step + table
 
+	prgm.metrics.IncrScriptExecution()
 	for _, stepName := range prgm.steps {
 		if !reporter(stepName) {
 			// stop running
@@ -121,13 +150,17 @@ func (prgm *LuaProgram) runSteps(reporter func(step string) bool) error {
 		//   - function
 		//   - step-table
 		// we can invoke the function with the argument
+
+		start := time.Now()
 		err := l.ProtectedCall(1, 1, 0) // 1 argument, with 1 return value
 		if err != nil {
+			prgm.metrics.IncrStepError(stepName)
 			return &StepError{Step: stepName, Err: err}
 		}
 		if l.Top() != 2 {
 			lua.Errorf(l, "step %q needs to return exactly 1 argument", stepName)
 		}
+		prgm.metrics.IncrStepExecution(stepName, time.Since(start))
 	}
 	return nil
 }
