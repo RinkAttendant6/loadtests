@@ -1,13 +1,13 @@
 package controller
 
 import (
-	"bytes"
-	"github.com/lgpeterson/loadtests/executor/engine"
-	"github.com/lgpeterson/loadtests/executor/executorGRPC"
-	"golang.org/x/net/context"
 	"log"
 	"strings"
 	"sync"
+
+	"github.com/lgpeterson/loadtests/executor/engine"
+	"github.com/lgpeterson/loadtests/executor/executorGRPC"
+	"golang.org/x/net/context"
 )
 
 type worker struct {
@@ -26,9 +26,8 @@ func (w *worker) execute() {
 		case <-w.Done:
 			return
 		case <-w.JobChannel:
-			buf := bytes.NewBuffer(nil)
 			scriptReader := strings.NewReader(w.Command.Script)
-			prog, err := engine.Lua(scriptReader, buf)
+			prog, err := engine.Lua(scriptReader)
 			if err != nil {
 				// This should not be because the script did not compile, if it
 				// did not compile it would be reported to the user before this
@@ -44,7 +43,7 @@ func (w *worker) execute() {
 				continue
 			}
 
-			w.Persist.Persist(w.Command.ScriptName, w.Command.URL, buf.Bytes())
+			w.Persist.Persist(w.Command.ScriptName, w.Command.URL, []byte{})
 		}
 
 	}

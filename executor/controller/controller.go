@@ -25,7 +25,7 @@ type Persister interface {
 // RunInstructions will get the IP from the file it found and send it to the pinger
 func (f *Controller) RunInstructions(persister Persister) error {
 	script := strings.NewReader(f.Command.Script)
-	_, err := engine.Lua(script, nil)
+	_, err := engine.Lua(script)
 	if err != nil {
 		return err
 	}
