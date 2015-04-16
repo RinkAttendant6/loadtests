@@ -6,9 +6,8 @@ go:
   - 1.4.2
 
 install:
-  - go get google.golang.org/grpc
-  - go get github.com/Shopify/go-lua
-  - go get github.com/golang/protobuf/proto
+  - go get github.com/tools/godep
+  - godep restore
 
 script: 
   - go test -tags unit_test_executor ./executor

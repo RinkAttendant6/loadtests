@@ -1,0 +1,50 @@
+{
+	"ImportPath": "github.com/lgpeterson/loadtests",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/Shopify/go-lua",
+			"Rev": "01100eb78d65b313b80db5900310e6a4d2a06844"
+		},
+		{
+			"ImportPath": "github.com/benbjohnson/clock",
+			"Rev": "7f9bbfdd12eedf848e765d1b50628588caec4266"
+		},
+		{
+			"ImportPath": "github.com/bradfitz/http2",
+			"Rev": "97124afb234048ae0c91b8883c59fcd890bf8145"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "655cdfa588ea190e901bc5590e65d5621688847c"
+		},
+		{
+			"ImportPath": "github.com/influxdb/influxdb/client",
+			"Comment": "v0.8.8",
+			"Rev": "afde71eb1740fd763ab9450e1f700ba0e53c36d0"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "84ba27dd5b2d8135e9da1395277f2c9333a2ffda"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "ce5ea7da934b76b1066c527632359e2b8f65db97"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/compute/metadata",
+			"Rev": "c97f5f9979a8582f3ab72873a51979619801248b"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/internal",
+			"Rev": "c97f5f9979a8582f3ab72873a51979619801248b"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc",
+			"Rev": "343e5059046a2e012dbe72e51ea06cae88e3c081"
+		}
+	]
+}
