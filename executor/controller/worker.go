@@ -11,7 +11,7 @@ import (
 )
 
 type worker struct {
-	Persist    Persister
+	Persister  Persister
 	Command    *executorGRPC.CommandMessage
 	Wait       *sync.WaitGroup
 	JobChannel <-chan struct{}
@@ -27,7 +27,8 @@ func (w *worker) execute() {
 			return
 		case <-w.JobChannel:
 			scriptReader := strings.NewReader(w.Command.Script)
-			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(w.Persist))
+			metrics := NewMetricsGatherer()
+			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(metrics))
 			if err != nil {
 				// This should not be because the script did not compile, if it
 				// did not compile it would be reported to the user before this
@@ -43,7 +44,12 @@ func (w *worker) execute() {
 				continue
 			}
 
-			w.Persist.Persist(w.Command.ScriptName, w.Command.URL, []byte{})
+			err = w.Persister.Persist(w.Command.ScriptName, metrics)
+			if err != nil {
+				// I assume I can keep going if the lua script encoutered an error
+				log.Printf("Error saving output of lua script: %v", err)
+				continue
+			}
 		}
 
 	}

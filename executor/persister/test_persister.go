@@ -1,31 +1,26 @@
 package persister
 
-import "fmt"
+import (
+	"fmt"
 
-import "time"
+	"github.com/lgpeterson/loadtests/executor/controller"
+)
 
 // TestPersister is a persister that will save the output to a file
 type TestPersister struct {
 	Content []string
 }
 
-func (f *TestPersister) IncrScriptExecution()                                      {}
-func (f *TestPersister) IncrStepExecution(step string, dur time.Duration)          {}
-func (f *TestPersister) IncrStepError(step string)                                 {}
-func (f *TestPersister) IncrHTTPGet(url string, code int, duration time.Duration)  {}
-func (f *TestPersister) IncrHTTPPost(url string, code int, duration time.Duration) {}
-func (f *TestPersister) IncrHTTPError(url string)                                  {}
-func (f *TestPersister) IncrLogInfo()                                              {}
-func (f *TestPersister) IncrLogFatal()                                             {}
-
 // Persist TestPersister the data to a file with public permissions
-func (f *TestPersister) Persist(testName string, ip string, code []byte) error {
-	//fmt.Printf("%v\n", time.Now().Local())
-	if len(f.Content) == 0 {
-		f.Content = make([]string, 1)
-		f.Content[0] = fmt.Sprintf("%s: %s", ip, code)
-	} else {
-		f.Content = append(f.Content, fmt.Sprintf("%s: %s", ip, code))
+func (f *TestPersister) Persist(scriptName string, metrics *controller.MetricsGatherer) error {
+	for _, point := range metrics.Points {
+		data := fmt.Sprintf("%s: %s %d", scriptName, point.Fields["url"], point.Fields["code"])
+		f.Content = append(f.Content, data)
 	}
+	if len(metrics.Points) == 0 {
+		data := fmt.Sprintf("%s: ", scriptName)
+		f.Content = append(f.Content, data)
+	}
+
 	return nil
 }

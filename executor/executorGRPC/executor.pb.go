@@ -41,11 +41,11 @@ type CommandMessage struct {
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
 	ScriptName                string  `protobuf:"bytes,3,opt,name=scriptName" json:"scriptName,omitempty"`
 	RunTime                   int32   `protobuf:"varint,4,opt,name=runTime" json:"runTime,omitempty"`
-	MaxWorkers                int32   `protobuf:"varint,6,opt,name=maxWorkers" json:"maxWorkers,omitempty"`
-	GrowthFactor              float64 `protobuf:"fixed64,8,opt,name=growthFactor" json:"growthFactor,omitempty"`
-	TimeBetweenGrowth         float64 `protobuf:"fixed64,9,opt,name=timeBetweenGrowth" json:"timeBetweenGrowth,omitempty"`
-	StartingRequestsPerSecond int32   `protobuf:"varint,10,opt,name=startingRequestsPerSecond" json:"startingRequestsPerSecond,omitempty"`
-	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=maxRequestsPerSecond" json:"maxRequestsPerSecond,omitempty"`
+	MaxWorkers                int32   `protobuf:"varint,5,opt,name=maxWorkers" json:"maxWorkers,omitempty"`
+	GrowthFactor              float64 `protobuf:"fixed64,6,opt,name=growthFactor" json:"growthFactor,omitempty"`
+	TimeBetweenGrowth         float64 `protobuf:"fixed64,7,opt,name=timeBetweenGrowth" json:"timeBetweenGrowth,omitempty"`
+	StartingRequestsPerSecond int32   `protobuf:"varint,8,opt,name=startingRequestsPerSecond" json:"startingRequestsPerSecond,omitempty"`
+	MaxRequestsPerSecond      int32   `protobuf:"varint,9,opt,name=maxRequestsPerSecond" json:"maxRequestsPerSecond,omitempty"`
 }
 
 func (m *CommandMessage) Reset()         { *m = CommandMessage{} }

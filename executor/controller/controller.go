@@ -1,13 +1,15 @@
 package controller
 
 import (
-	"github.com/benbjohnson/clock"
-	"github.com/lgpeterson/loadtests/executor/engine"
-	"github.com/lgpeterson/loadtests/executor/executorGRPC"
-	"golang.org/x/net/context"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/context"
+
+	"github.com/benbjohnson/clock"
+	"github.com/lgpeterson/loadtests/executor/engine"
+	"github.com/lgpeterson/loadtests/executor/executorGRPC"
 )
 
 // Controller this will read what IP to ping from a file
@@ -19,18 +21,7 @@ type Controller struct {
 
 // Persister is an interface to save whatever data is grabbed from the executor
 type Persister interface {
-	Persist(scriptName string, data string, result []byte) error
-	IncrScriptExecution()
-
-	IncrStepExecution(string, time.Duration)
-	IncrStepError(string)
-
-	IncrHTTPGet(string, int, time.Duration)
-	IncrHTTPPost(string, int, time.Duration)
-	IncrHTTPError(string)
-
-	IncrLogInfo()
-	IncrLogFatal()
+	Persist(scriptName string, metrics *MetricsGatherer) error
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger
@@ -45,7 +36,6 @@ func (f *Controller) RunInstructions(persister Persister) error {
 }
 
 func (f *Controller) runScript(persister Persister) {
-
 	done := make(chan struct{})
 	jobChannel := make(chan struct{})
 	defer close(jobChannel)
@@ -54,7 +44,7 @@ func (f *Controller) runScript(persister Persister) {
 	// Create all the workers that will listen for jobs
 	for i := int32(0); i < f.Command.MaxWorkers; i++ {
 		w := &worker{
-			Persist:    persister,
+			Persister:  persister,
 			Command:    f.Command,
 			Wait:       &wg,
 			JobChannel: jobChannel,
@@ -74,8 +64,8 @@ func (f *Controller) runScript(persister Persister) {
 	defer ticker.Stop()
 
 	growthTicker := f.Clock.Ticker(time.Second * time.Duration(f.Command.TimeBetweenGrowth))
-	growthActive := true
 	defer growthTicker.Stop()
+	growthActive := true
 
 	go func() {
 		f.Clock.Sleep(time.Second * time.Duration(f.Command.RunTime))

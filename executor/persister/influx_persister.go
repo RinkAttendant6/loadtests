@@ -1,87 +1,98 @@
 package persister
 
 import (
-	"github.com/influxdb/influxdb/client"
-	"log"
-	"time"
-)
+	"crypto/tls"
+	"fmt"
+	"net/http"
+	"strconv"
 
-//import "encoding/json"
+	"github.com/lgpeterson/influxdb/client"
+	"github.com/lgpeterson/loadtests/executor/controller"
+)
 
 // InfluxPersister is a persister that will save the output to a file
 type InfluxPersister struct {
 	client *client.Client
 }
 
+var (
+	database = "ltm_metrics"
+	ssl      = true
+)
+
 // NewInfluxPersister creates a new influx perisistor with the influx IP
 func NewInfluxPersister(influxIP string, user string, pass string) (*InfluxPersister, error) {
-	c, err := client.NewClient(&client.ClientConfig{
-		Database: "site_development",
-		Username: user,
-		Password: pass,
-		Host:     influxIP,
-	})
+	url, err := client.ParseConnectionString(influxIP, ssl)
+	if err != nil {
+		return nil, err
+	}
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	httpClient := &http.Client{Transport: tr}
+	config := client.NewConfig()
+	config.Username = user
+	config.Password = pass
+	config.URL = url
+	config.HttpClient = httpClient
+
+	c, err := client.NewClient(config)
+
 	return &InfluxPersister{c}, err
 }
 
-func (f *InfluxPersister) IncrScriptExecution()                             {}
-func (f *InfluxPersister) IncrStepExecution(step string, dur time.Duration) {}
-func (f *InfluxPersister) IncrStepError(step string)                        {}
-func (f *InfluxPersister) IncrHTTPGet(url string, code int, duration time.Duration) {
-	series := &client.Series{
-		Name:    "GetRequestTable",
-		Columns: []string{"url", "code", "duration_ns"},
-		Points: [][]interface{}{
-			{url, code, duration.Nanoseconds()},
-		},
+func (f *InfluxPersister) CountOccurrences(testID string, tableName string) (int, error) {
+	cmd := fmt.Sprintf("select count(id) from %s where id=%s", tableName, testID)
+	query := client.Query{
+		Command:  cmd,
+		Database: database,
 	}
-	err := f.client.WriteSeries([]*client.Series{series})
+	result, err := f.client.Query(query)
 	if err != nil {
-		log.Printf("error writing post series to influx: %v", err)
+		return 0, err
+	} else if result.Error() != nil {
+		return 0, result.Error()
 	}
-}
-func (f *InfluxPersister) IncrHTTPPost(url string, code int, duration time.Duration) {
-	series := &client.Series{
-		Name:    "PostRequestTable",
-		Columns: []string{"url", "code", "duration_ns"},
-		Points: [][]interface{}{
-			{url, code, duration.Nanoseconds()},
-		},
+	res := result.Results
+	if len(res) == 0 {
+		return 0, fmt.Errorf("no rows found")
 	}
-	err := f.client.WriteSeries([]*client.Series{series})
+	stringCount := fmt.Sprintf("%v", res)
+	count, err := strconv.ParseInt(stringCount, 10, 0)
 	if err != nil {
-		log.Printf("error writing post series to influx: %v", err)
+		return 0, fmt.Errorf("what I got back was not an int: %v", err)
 	}
+	return int(count), nil
 }
-func (f *InfluxPersister) IncrHTTPError(url string) {
-	series := &client.Series{
-		Name:    "ErrorRequestTable",
-		Columns: []string{"url"},
-		Points: [][]interface{}{
-			{url},
-		},
+
+func (f *InfluxPersister) DropData(tableName string) error {
+	// drop series test
+	cmd := fmt.Sprintf("drop series %s", tableName)
+	query := client.Query{
+		Command:  cmd,
+		Database: database,
 	}
-	err := f.client.WriteSeries([]*client.Series{series})
-	if err != nil {
-		log.Printf("error writing post series to influx: %v", err)
-	}
+	_, err := f.client.Query(query)
+	return err
 }
-func (f *InfluxPersister) IncrLogInfo()  {}
-func (f *InfluxPersister) IncrLogFatal() {}
 
 // Persist saves the data to a file with public permissions
-func (f *InfluxPersister) Persist(scriptName string, site string, result []byte) error {
-	/* stringResult := string(result)
-
-	series := &client.Series{
-		Name:    "test",
-		Columns: []string{"scriptName", "site", "result"},
-		Points: [][]interface{}{
-			{scriptName, site, stringResult},
-		},
+func (f *InfluxPersister) Persist(scriptName string, metrics *controller.MetricsGatherer) error {
+	addId(metrics, scriptName)
+	bps := client.BatchPoints{
+		Points:          metrics.Points,
+		Database:        database,
+		RetentionPolicy: "default",
 	}
-	err := f.client.WriteSeries([]*client.Series{series})
+	_, err := f.client.Write(bps)
 	return err
-	*/
-	return nil
+}
+
+func addId(metrics *controller.MetricsGatherer, scriptName string) {
+	for _, point := range metrics.Points {
+		cols := point.Fields
+		cols["id"] = scriptName
+		point.Fields = cols
+	}
 }

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/executorGRPC"
 	"golang.org/x/net/context"
@@ -19,7 +20,8 @@ type GRPCExecutorStarter struct {
 
 // NewGRPCExecutorStarter this creates a new GRPCExecutorStarter and sets the directory to look in
 func NewGRPCExecutorStarter(persister Persister, port string, wg *sync.WaitGroup, clock clock.Clock) (*grpc.Server, error) {
-	lis, err := net.Listen("tcp", port)
+	listenPort := fmt.Sprintf(":%s", port)
+	lis, err := net.Listen("tcp", listenPort)
 	wg.Add(1)
 	if err != nil {
 		return nil, err
@@ -42,6 +44,7 @@ func NewGRPCExecutorStarter(persister Persister, port string, wg *sync.WaitGroup
 
 // ExecuteCommand is the server interface for listening for a command
 func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *executorGRPC.CommandMessage) (*executorGRPC.StatusMessage, error) {
+	log.Printf("Received command: %v", in)
 	executorController := &Controller{Command: in, Context: ctx, Clock: s.clock}
 	err := executorController.RunInstructions(s.persister)
 	if err != nil {
