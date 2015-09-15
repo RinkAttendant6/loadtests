@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "pb";
+
+service Scheduler {
+    rpc LoadTest(LoadTestReq) returns (stream LoadTestResp) {};
+}
+
+message LoadTestReq {
+
+}
+
+message LoadTestResp {
+
+}
