@@ -11,6 +11,8 @@ It is generated from these files:
 It has these top-level messages:
 	LoadTestReq
 	LoadTestResp
+	RegisterExecutorReq
+	RegisterExecutorResp
 */
 package pb
 
@@ -29,6 +31,15 @@ var _ grpc.ClientConn
 var _ = proto.Marshal
 
 type LoadTestReq struct {
+	URL                       string  `protobuf:"bytes,1,opt" json:"URL,omitempty"`
+	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
+	ScriptName                string  `protobuf:"bytes,3,opt,name=scriptName" json:"scriptName,omitempty"`
+	RunTime                   int32   `protobuf:"varint,4,opt,name=runTime" json:"runTime,omitempty"`
+	MaxWorkers                int32   `protobuf:"varint,6,opt,name=maxWorkers" json:"maxWorkers,omitempty"`
+	GrowthFactor              float64 `protobuf:"fixed64,8,opt,name=growthFactor" json:"growthFactor,omitempty"`
+	TimeBetweenGrowth         float64 `protobuf:"fixed64,9,opt,name=timeBetweenGrowth" json:"timeBetweenGrowth,omitempty"`
+	StartingRequestsPerSecond int32   `protobuf:"varint,10,opt,name=startingRequestsPerSecond" json:"startingRequestsPerSecond,omitempty"`
+	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=maxRequestsPerSecond" json:"maxRequestsPerSecond,omitempty"`
 }
 
 func (m *LoadTestReq) Reset()         { *m = LoadTestReq{} }
@@ -36,16 +47,78 @@ func (m *LoadTestReq) String() string { return proto.CompactTextString(m) }
 func (*LoadTestReq) ProtoMessage()    {}
 
 type LoadTestResp struct {
+	Start  *LoadTestResp_Started  `protobuf:"bytes,1,opt,name=start" json:"start,omitempty"`
+	Finish *LoadTestResp_Finished `protobuf:"bytes,2,opt,name=finish" json:"finish,omitempty"`
+	Error  *LoadTestResp_Errored  `protobuf:"bytes,3,opt,name=error" json:"error,omitempty"`
 }
 
 func (m *LoadTestResp) Reset()         { *m = LoadTestResp{} }
 func (m *LoadTestResp) String() string { return proto.CompactTextString(m) }
 func (*LoadTestResp) ProtoMessage()    {}
 
+func (m *LoadTestResp) GetStart() *LoadTestResp_Started {
+	if m != nil {
+		return m.Start
+	}
+	return nil
+}
+
+func (m *LoadTestResp) GetFinish() *LoadTestResp_Finished {
+	if m != nil {
+		return m.Finish
+	}
+	return nil
+}
+
+func (m *LoadTestResp) GetError() *LoadTestResp_Errored {
+	if m != nil {
+		return m.Error
+	}
+	return nil
+}
+
+type LoadTestResp_Started struct {
+}
+
+func (m *LoadTestResp_Started) Reset()         { *m = LoadTestResp_Started{} }
+func (m *LoadTestResp_Started) String() string { return proto.CompactTextString(m) }
+func (*LoadTestResp_Started) ProtoMessage()    {}
+
+type LoadTestResp_Finished struct {
+}
+
+func (m *LoadTestResp_Finished) Reset()         { *m = LoadTestResp_Finished{} }
+func (m *LoadTestResp_Finished) String() string { return proto.CompactTextString(m) }
+func (*LoadTestResp_Finished) ProtoMessage()    {}
+
+type LoadTestResp_Errored struct {
+}
+
+func (m *LoadTestResp_Errored) Reset()         { *m = LoadTestResp_Errored{} }
+func (m *LoadTestResp_Errored) String() string { return proto.CompactTextString(m) }
+func (*LoadTestResp_Errored) ProtoMessage()    {}
+
+type RegisterExecutorReq struct {
+	DropletId int64 `protobuf:"varint,1,opt,name=droplet_id" json:"droplet_id,omitempty"`
+	Port      int64 `protobuf:"varint,2,opt,name=port" json:"port,omitempty"`
+}
+
+func (m *RegisterExecutorReq) Reset()         { *m = RegisterExecutorReq{} }
+func (m *RegisterExecutorReq) String() string { return proto.CompactTextString(m) }
+func (*RegisterExecutorReq) ProtoMessage()    {}
+
+type RegisterExecutorResp struct {
+}
+
+func (m *RegisterExecutorResp) Reset()         { *m = RegisterExecutorResp{} }
+func (m *RegisterExecutorResp) String() string { return proto.CompactTextString(m) }
+func (*RegisterExecutorResp) ProtoMessage()    {}
+
 // Client API for Scheduler service
 
 type SchedulerClient interface {
 	LoadTest(ctx context.Context, in *LoadTestReq, opts ...grpc.CallOption) (Scheduler_LoadTestClient, error)
+	RegisterExecutor(ctx context.Context, in *RegisterExecutorReq, opts ...grpc.CallOption) (*RegisterExecutorResp, error)
 }
 
 type schedulerClient struct {
@@ -88,10 +161,20 @@ func (x *schedulerLoadTestClient) Recv() (*LoadTestResp, error) {
 	return m, nil
 }
 
+func (c *schedulerClient) RegisterExecutor(ctx context.Context, in *RegisterExecutorReq, opts ...grpc.CallOption) (*RegisterExecutorResp, error) {
+	out := new(RegisterExecutorResp)
+	err := grpc.Invoke(ctx, "/.Scheduler/RegisterExecutor", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Scheduler service
 
 type SchedulerServer interface {
 	LoadTest(*LoadTestReq, Scheduler_LoadTestServer) error
+	RegisterExecutor(context.Context, *RegisterExecutorReq) (*RegisterExecutorResp, error)
 }
 
 func RegisterSchedulerServer(s *grpc.Server, srv SchedulerServer) {
@@ -119,10 +202,27 @@ func (x *schedulerLoadTestServer) Send(m *LoadTestResp) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Scheduler_RegisterExecutor_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(RegisterExecutorReq)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(SchedulerServer).RegisterExecutor(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Scheduler_serviceDesc = grpc.ServiceDesc{
 	ServiceName: ".Scheduler",
 	HandlerType: (*SchedulerServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "RegisterExecutor",
+			Handler:    _Scheduler_RegisterExecutor_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "LoadTest",

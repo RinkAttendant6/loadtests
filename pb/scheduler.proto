@@ -4,12 +4,38 @@ option go_package = "pb";
 
 service Scheduler {
     rpc LoadTest(LoadTestReq) returns (stream LoadTestResp) {};
+    rpc RegisterExecutor(RegisterExecutorReq) returns (RegisterExecutorResp) {};
 }
 
 message LoadTestReq {
-
+    string URL                       = 1;
+    string script                    = 2;
+    string scriptName                = 3;
+    int32  runTime                   = 4;
+    int32  maxWorkers                = 6;
+    double growthFactor              = 8;
+    double timeBetweenGrowth         = 9;
+    int32  startingRequestsPerSecond = 10;
+    int32  maxRequestsPerSecond      = 11;
 }
 
 message LoadTestResp {
+    message Started {};
+    message Finished {};
+    message Errored {};
+    oneof phase {
+        Started  start  = 1;
+        Finished finish = 2;
+        Errored  error  = 3;
+    }
+}
+
+message RegisterExecutorReq {
+    int64 droplet_id = 1;
+    int64 port       = 2;
+
+}
+
+message RegisterExecutorResp {
 
 }
