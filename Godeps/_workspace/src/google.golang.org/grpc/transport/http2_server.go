@@ -37,7 +37,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"log"
 	"math"
 	"net"
 	"strconv"
@@ -47,6 +46,8 @@ import (
 	"github.com/bradfitz/http2/hpack"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -57,7 +58,8 @@ var ErrIllegalHeaderWrite = errors.New("transport: the stream is done or WriteHe
 // http2Server implements the ServerTransport interface with HTTP2.
 type http2Server struct {
 	conn        net.Conn
-	maxStreamID uint32 // max stream ID ever seen
+	maxStreamID uint32               // max stream ID ever seen
+	authInfo    credentials.AuthInfo // auth info about the connection
 	// writableChan synchronizes write access to the transport.
 	// A writer acquires the write lock by sending a value on writableChan
 	// and releases it by receiving from writableChan.
@@ -88,11 +90,9 @@ type http2Server struct {
 
 // newHTTP2Server constructs a ServerTransport based on HTTP2. ConnectionError is
 // returned if something goes wrong.
-func newHTTP2Server(conn net.Conn, maxStreams uint32) (_ ServerTransport, err error) {
+func newHTTP2Server(conn net.Conn, maxStreams uint32, authInfo credentials.AuthInfo) (_ ServerTransport, err error) {
 	framer := newFramer(conn)
 	// Send initial settings as connection preface to client.
-	// TODO(zhaoq): Have a better way to signal "no limit" because 0 is
-	// permitted in the HTTP2 spec.
 	var settings []http2.Setting
 	// TODO(zhaoq): Have a better way to signal "no limit" because 0 is
 	// permitted in the HTTP2 spec.
@@ -116,6 +116,7 @@ func newHTTP2Server(conn net.Conn, maxStreams uint32) (_ ServerTransport, err er
 	var buf bytes.Buffer
 	t := &http2Server{
 		conn:            conn,
+		authInfo:        authInfo,
 		framer:          framer,
 		hBuf:            &buf,
 		hEnc:            hpack.NewEncoder(&buf),
@@ -143,9 +144,13 @@ func (t *http2Server) operateHeaders(hDec *hpackDecoder, s *Stream, frame header
 			hDec.state = decodeState{}
 		}
 	}()
-	endHeaders, err := hDec.decodeServerHTTP2Headers(s, frame)
+	endHeaders, err := hDec.decodeServerHTTP2Headers(frame)
+	if s == nil {
+		// s has been closed.
+		return nil
+	}
 	if err != nil {
-		log.Printf("transport: http2Server.operateHeader found %v", err)
+		grpclog.Printf("transport: http2Server.operateHeader found %v", err)
 		if se, ok := err.(StreamError); ok {
 			t.controlBuf.put(&resetStream{s.id, statusCodeConvTab[se.Code]})
 		}
@@ -179,6 +184,10 @@ func (t *http2Server) operateHeaders(hDec *hpackDecoder, s *Stream, frame header
 	} else {
 		s.ctx, s.cancel = context.WithCancel(context.TODO())
 	}
+	// Attach Auth info if there is any.
+	if t.authInfo != nil {
+		s.ctx = credentials.NewContext(s.ctx, t.authInfo)
+	}
 	// Cache the current stream to the context so that the server application
 	// can find out. Required when the server wants to send some metadata
 	// back to the client (unary call only).
@@ -208,25 +217,25 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 	// Check the validity of client preface.
 	preface := make([]byte, len(clientPreface))
 	if _, err := io.ReadFull(t.conn, preface); err != nil {
-		log.Printf("transport: http2Server.HandleStreams failed to receive the preface from client: %v", err)
+		grpclog.Printf("transport: http2Server.HandleStreams failed to receive the preface from client: %v", err)
 		t.Close()
 		return
 	}
 	if !bytes.Equal(preface, clientPreface) {
-		log.Printf("transport: http2Server.HandleStreams received bogus greeting from client: %q", preface)
+		grpclog.Printf("transport: http2Server.HandleStreams received bogus greeting from client: %q", preface)
 		t.Close()
 		return
 	}
 
 	frame, err := t.framer.readFrame()
 	if err != nil {
-		log.Printf("transport: http2Server.HandleStreams failed to read frame: %v", err)
+		grpclog.Printf("transport: http2Server.HandleStreams failed to read frame: %v", err)
 		t.Close()
 		return
 	}
 	sf, ok := frame.(*http2.SettingsFrame)
 	if !ok {
-		log.Printf("transport: http2Server.HandleStreams saw invalid preface type %T from client", frame)
+		grpclog.Printf("transport: http2Server.HandleStreams saw invalid preface type %T from client", frame)
 		t.Close()
 		return
 	}
@@ -247,7 +256,7 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 			id := frame.Header().StreamID
 			if id%2 != 1 || id <= t.maxStreamID {
 				// illegal gRPC stream id.
-				log.Println("transport: http2Server.HandleStreams received an illegal stream id: ", id)
+				grpclog.Println("transport: http2Server.HandleStreams received an illegal stream id: ", id)
 				t.Close()
 				break
 			}
@@ -266,9 +275,6 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 			endStream := frame.Header().Flags.Has(http2.FlagHeadersEndStream)
 			curStream = t.operateHeaders(hDec, curStream, frame, endStream, handle, &wg)
 		case *http2.ContinuationFrame:
-			if curStream == nil {
-				continue
-			}
 			curStream = t.operateHeaders(hDec, curStream, frame, false, handle, &wg)
 		case *http2.DataFrame:
 			t.handleData(frame)
@@ -280,8 +286,10 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 			t.handlePing(frame)
 		case *http2.WindowUpdateFrame:
 			t.handleWindowUpdate(frame)
+		case *http2.GoAwayFrame:
+			break
 		default:
-			log.Printf("transport: http2Server.HanldeStreams found unhandled frame type %v.", frame)
+			grpclog.Printf("transport: http2Server.HandleStreams found unhandled frame type %v.", frame)
 		}
 	}
 }
@@ -305,11 +313,12 @@ func (t *http2Server) getStream(f http2.Frame) (*Stream, bool) {
 // Window updates will deliver to the controller for sending when
 // the cumulative quota exceeds the corresponding threshold.
 func (t *http2Server) updateWindow(s *Stream, n uint32) {
-	if q := t.fc.onRead(n); q > 0 {
-		t.controlBuf.put(&windowUpdate{0, q})
+	swu, cwu := s.fc.onRead(n)
+	if swu > 0 {
+		t.controlBuf.put(&windowUpdate{s.id, swu})
 	}
-	if q := s.fc.onRead(n); q > 0 {
-		t.controlBuf.put(&windowUpdate{s.id, q})
+	if cwu > 0 {
+		t.controlBuf.put(&windowUpdate{0, cwu})
 	}
 }
 
@@ -320,22 +329,24 @@ func (t *http2Server) handleData(f *http2.DataFrame) {
 		return
 	}
 	size := len(f.Data())
-	if err := s.fc.onData(uint32(size)); err != nil {
-		if _, ok := err.(ConnectionError); ok {
-			log.Printf("transport: http2Server %v", err)
-			t.Close()
+	if size > 0 {
+		if err := s.fc.onData(uint32(size)); err != nil {
+			if _, ok := err.(ConnectionError); ok {
+				grpclog.Printf("transport: http2Server %v", err)
+				t.Close()
+				return
+			}
+			t.closeStream(s)
+			t.controlBuf.put(&resetStream{s.id, http2.ErrCodeFlowControl})
 			return
 		}
-		t.closeStream(s)
-		t.controlBuf.put(&resetStream{s.id, http2.ErrCodeFlowControl})
-		return
+		// TODO(bradfitz, zhaoq): A copy is required here because there is no
+		// guarantee f.Data() is consumed before the arrival of next frame.
+		// Can this copy be eliminated?
+		data := make([]byte, size)
+		copy(data, f.Data())
+		s.write(recvMsg{data: data})
 	}
-	// TODO(bradfitz, zhaoq): A copy is required here because there is no
-	// guarantee f.Data() is consumed before the arrival of next frame.
-	// Can this copy be eliminated?
-	data := make([]byte, size)
-	copy(data, f.Data())
-	s.write(recvMsg{data: data})
 	if f.Header().Flags.Has(http2.FlagDataEndStream) {
 		// Received the end of stream from the client.
 		s.mu.Lock()
@@ -356,11 +367,6 @@ func (t *http2Server) handleRSTStream(f *http2.RSTStreamFrame) {
 	if !ok {
 		return
 	}
-	s.mu.Lock()
-	// Sets the stream state to avoid sending RSTStreamFrame to client
-	// unnecessarily.
-	s.state = streamDone
-	s.mu.Unlock()
 	t.closeStream(s)
 }
 
@@ -368,22 +374,17 @@ func (t *http2Server) handleSettings(f *http2.SettingsFrame) {
 	if f.IsAck() {
 		return
 	}
+	var ss []http2.Setting
 	f.ForeachSetting(func(s http2.Setting) error {
-		if v, ok := f.Value(http2.SettingInitialWindowSize); ok {
-			t.mu.Lock()
-			defer t.mu.Unlock()
-			for _, s := range t.activeStreams {
-				s.sendQuotaPool.reset(int(v - t.streamSendQuota))
-			}
-			t.streamSendQuota = v
-		}
+		ss = append(ss, s)
 		return nil
 	})
-	t.controlBuf.put(&settings{ack: true})
+	// The settings will be applied once the ack is sent.
+	t.controlBuf.put(&settings{ack: true, ss: ss})
 }
 
 func (t *http2Server) handlePing(f *http2.PingFrame) {
-	// TODO(zhaoq): PingFrame handler to be implemented
+	t.controlBuf.put(&ping{true})
 }
 
 func (t *http2Server) handleWindowUpdate(f *http2.WindowUpdateFrame) {
@@ -446,7 +447,9 @@ func (t *http2Server) WriteHeader(s *Stream, md metadata.MD) error {
 	t.hEnc.WriteField(hpack.HeaderField{Name: ":status", Value: "200"})
 	t.hEnc.WriteField(hpack.HeaderField{Name: "content-type", Value: "application/grpc"})
 	for k, v := range md {
-		t.hEnc.WriteField(hpack.HeaderField{Name: k, Value: v})
+		for _, entry := range v {
+			t.hEnc.WriteField(hpack.HeaderField{Name: k, Value: entry})
+		}
 	}
 	if err := t.writeHeaders(s, t.hBuf, false); err != nil {
 		return err
@@ -479,9 +482,12 @@ func (t *http2Server) WriteStatus(s *Stream, statusCode codes.Code, statusDesc s
 	t.hEnc.WriteField(hpack.HeaderField{Name: "grpc-message", Value: statusDesc})
 	// Attach the trailer metadata.
 	for k, v := range s.trailer {
-		t.hEnc.WriteField(hpack.HeaderField{Name: k, Value: v})
+		for _, entry := range v {
+			t.hEnc.WriteField(hpack.HeaderField{Name: k, Value: entry})
+		}
 	}
 	if err := t.writeHeaders(s, t.hBuf, true); err != nil {
+		t.Close()
 		return err
 	}
 	t.closeStream(s)
@@ -584,6 +590,20 @@ func (t *http2Server) Write(s *Stream, data []byte, opts *Options) error {
 
 }
 
+func (t *http2Server) applySettings(ss []http2.Setting) {
+	for _, s := range ss {
+		if s.ID == http2.SettingInitialWindowSize {
+			t.mu.Lock()
+			defer t.mu.Unlock()
+			for _, stream := range t.activeStreams {
+				stream.sendQuotaPool.reset(int(s.Val - t.streamSendQuota))
+			}
+			t.streamSendQuota = s.Val
+		}
+
+	}
+}
+
 // controller running in a separate goroutine takes charge of sending control
 // frames (e.g., window update, reset stream, setting, etc.) to the server.
 func (t *http2Server) controller() {
@@ -599,15 +619,20 @@ func (t *http2Server) controller() {
 				case *settings:
 					if i.ack {
 						t.framer.writeSettingsAck(true)
+						t.applySettings(i.ss)
 					} else {
-						t.framer.writeSettings(true, i.setting...)
+						t.framer.writeSettings(true, i.ss...)
 					}
 				case *resetStream:
 					t.framer.writeRSTStream(true, i.streamID, i.code)
 				case *flushIO:
 					t.framer.flushWrite()
+				case *ping:
+					// TODO(zhaoq): Ack with all-0 data now. will change to some
+					// meaningful content when this is actually in use.
+					t.framer.writePing(true, i.ack, [8]byte{})
 				default:
-					log.Printf("transport: http2Server.controller got unexpected item type %v\n", i)
+					grpclog.Printf("transport: http2Server.controller got unexpected item type %v\n", i)
 				}
 				t.writableChan <- 0
 				continue

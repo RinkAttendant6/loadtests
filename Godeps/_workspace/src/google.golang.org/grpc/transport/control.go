@@ -61,8 +61,8 @@ func (windowUpdate) isItem() bool {
 }
 
 type settings struct {
-	ack     bool
-	setting []http2.Setting
+	ack bool
+	ss  []http2.Setting
 }
 
 func (settings) isItem() bool {
@@ -85,6 +85,14 @@ func (flushIO) isItem() bool {
 	return true
 }
 
+type ping struct {
+	ack bool
+}
+
+func (ping) isItem() bool {
+	return true
+}
+
 // quotaPool is a pool which accumulates the quota and sends it to acquire()
 // when it is available.
 type quotaPool struct {
@@ -96,8 +104,14 @@ type quotaPool struct {
 
 // newQuotaPool creates a quotaPool which has quota q available to consume.
 func newQuotaPool(q int) *quotaPool {
-	qb := &quotaPool{c: make(chan int, 1)}
-	qb.c <- q
+	qb := &quotaPool{
+		c: make(chan int, 1),
+	}
+	if q > 0 {
+		qb.c <- q
+	} else {
+		qb.quota = q
+	}
 	return qb
 }
 
@@ -164,12 +178,10 @@ type inFlow struct {
 
 	mu sync.Mutex
 	// pendingData is the overall data which have been received but not been
-	// fully consumed (either pending for application to read or pending for
-	// window update).
+	// consumed by applications.
 	pendingData uint32
 	// The amount of data the application has consumed but grpc has not sent
-	// window update for them. Used to reduce window update frequency. It is
-	// always part of pendingData.
+	// window update for them. Used to reduce window update frequency.
 	pendingUpdate uint32
 }
 
@@ -181,8 +193,8 @@ func (f *inFlow) onData(n uint32) error {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.pendingData+n > f.limit {
-		return fmt.Errorf("recieved %d-bytes data exceeding the limit %d bytes", f.pendingData+n, f.limit)
+	if f.pendingData+f.pendingUpdate+n > f.limit {
+		return fmt.Errorf("recieved %d-bytes data exceeding the limit %d bytes", f.pendingData+f.pendingUpdate+n, f.limit)
 	}
 	if f.conn != nil {
 		if err := f.conn.onData(n); err != nil {
@@ -193,21 +205,43 @@ func (f *inFlow) onData(n uint32) error {
 	return nil
 }
 
-// onRead is invoked when the application reads the data.
-func (f *inFlow) onRead(n uint32) uint32 {
-	if n == 0 {
+// connOnRead updates the connection level states when the application consumes data.
+func (f *inFlow) connOnRead(n uint32) uint32 {
+	if n == 0 || f.conn != nil {
 		return 0
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.pendingData -= n
 	f.pendingUpdate += n
 	if f.pendingUpdate >= f.limit/4 {
 		ret := f.pendingUpdate
-		f.pendingData -= ret
 		f.pendingUpdate = 0
 		return ret
 	}
 	return 0
+}
+
+// onRead is invoked when the application reads the data. It returns the window updates
+// for both stream and connection level.
+func (f *inFlow) onRead(n uint32) (swu, cwu uint32) {
+	if n == 0 {
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.pendingData == 0 {
+		// pendingData has been adjusted by restoreConn.
+		return
+	}
+	f.pendingData -= n
+	f.pendingUpdate += n
+	if f.pendingUpdate >= f.limit/4 {
+		swu = f.pendingUpdate
+		f.pendingUpdate = 0
+	}
+	cwu = f.conn.connOnRead(n)
+	return
 }
 
 // restoreConn is invoked when a stream is terminated. It removes its stake in
@@ -218,14 +252,8 @@ func (f *inFlow) restoreConn() uint32 {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	ret := f.pendingData
-	f.conn.mu.Lock()
-	f.conn.pendingData -= ret
-	if f.conn.pendingUpdate > f.conn.pendingData {
-		f.conn.pendingUpdate = f.conn.pendingData
-	}
-	f.conn.mu.Unlock()
+	n := f.pendingData
 	f.pendingData = 0
 	f.pendingUpdate = 0
-	return ret
+	return f.conn.connOnRead(n)
 }
