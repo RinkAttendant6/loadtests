@@ -37,5 +37,9 @@ message RegisterExecutorReq {
 }
 
 message RegisterExecutorResp {
-
+    string influx_ip_port  = 1;
+    string influx_username = 2;
+    string influx_password = 3;
+    string influx_db       = 4;
+    bool   influx_ssl      = 5;
 }

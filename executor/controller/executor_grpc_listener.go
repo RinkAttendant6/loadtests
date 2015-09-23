@@ -2,14 +2,17 @@ package controller
 
 import (
 	"fmt"
-	"github.com/benbjohnson/clock"
-	"github.com/lgpeterson/loadtests/executor/executorGRPC"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/benbjohnson/clock"
+	executor "github.com/lgpeterson/loadtests/executor/pb"
+	scheduler "github.com/lgpeterson/loadtests/scheduler/pb"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 // GRPCExecutorStarter this will read what ip to ping from a file
@@ -19,8 +22,13 @@ type GRPCExecutorStarter struct {
 }
 
 // NewGRPCExecutorStarter this creates a new GRPCExecutorStarter and sets the directory to look in
-func NewGRPCExecutorStarter(persister Persister, port string, wg *sync.WaitGroup, clock clock.Clock) (*grpc.Server, error) {
-	listenPort := fmt.Sprintf(":%s", port)
+func NewGRPCExecutorStarter(persister Persister, schedulerIp string, port int, dropletId int, wg *sync.WaitGroup, clock clock.Clock) (*grpc.Server, error) {
+	err := registerDroplet(dropletId, persister, schedulerIp, port)
+	if err != nil {
+		return nil, err
+	}
+
+	listenPort := fmt.Sprintf(":%d", port)
 	lis, err := net.Listen("tcp", listenPort)
 	wg.Add(1)
 	if err != nil {
@@ -31,7 +39,7 @@ func NewGRPCExecutorStarter(persister Persister, port string, wg *sync.WaitGroup
 		clock:     clock,
 	}
 	s := grpc.NewServer()
-	executorGRPC.RegisterCommanderServer(s, executorStarter)
+	executor.RegisterCommanderServer(s, executorStarter)
 	go func() {
 		defer wg.Done()
 		err := s.Serve(lis)
@@ -42,8 +50,34 @@ func NewGRPCExecutorStarter(persister Persister, port string, wg *sync.WaitGroup
 	return s, nil
 }
 
+func registerDroplet(dropletId int, persister Persister,
+	schedulerIp string, port int) error {
+
+	req := &scheduler.RegisterExecutorReq{
+		Port:      int64(port),
+		DropletId: int64(dropletId),
+	}
+
+	timeout := grpc.WithTimeout(15 * time.Second)
+	insecure := grpc.WithInsecure()
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(schedulerIp, timeout, insecure)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	c := scheduler.NewSchedulerClient(conn)
+
+	msg, err := c.RegisterExecutor(context.Background(), req)
+	if err != nil {
+		return err
+	}
+
+	return persister.SetupPersister(msg.InfluxIpPort, msg.InfluxUsername, msg.InfluxPassword, msg.InfluxDb, msg.InfluxSsl)
+}
+
 // ExecuteCommand is the server interface for listening for a command
-func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *executorGRPC.CommandMessage) (*executorGRPC.StatusMessage, error) {
+func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *executor.CommandMessage) (*executor.StatusMessage, error) {
 	log.Printf("Received command: %v", in)
 	executorController := &Controller{Command: in, Context: ctx, Clock: s.clock}
 	err := executorController.RunInstructions(s.persister)
@@ -51,5 +85,5 @@ func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *executorGR
 		log.Printf("Error executing: %v", err)
 		return nil, err
 	}
-	return &executorGRPC.StatusMessage{"OK"}, nil
+	return &executor.StatusMessage{Status: "OK"}, nil
 }

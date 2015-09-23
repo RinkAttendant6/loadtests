@@ -9,7 +9,7 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/engine"
-	"github.com/lgpeterson/loadtests/executor/executorGRPC"
+	"github.com/lgpeterson/loadtests/executor/pb"
 )
 
 // Controller this will read what IP to ping from a file
@@ -22,6 +22,7 @@ type Controller struct {
 // Persister is an interface to save whatever data is grabbed from the executor
 type Persister interface {
 	Persist(scriptName string, metrics *MetricsGatherer) error
+	SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger

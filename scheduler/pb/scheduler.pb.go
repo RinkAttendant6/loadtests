@@ -17,6 +17,8 @@ It has these top-level messages:
 package pb
 
 import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
 
 import (
 	context "golang.org/x/net/context"
@@ -24,14 +26,12 @@ import (
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
-
-// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 type LoadTestReq struct {
-	URL                       string  `protobuf:"bytes,1,opt" json:"URL,omitempty"`
+	URL                       string  `protobuf:"bytes,1,opt,name=URL" json:"URL,omitempty"`
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
 	ScriptName                string  `protobuf:"bytes,3,opt,name=scriptName" json:"scriptName,omitempty"`
 	RunTime                   int32   `protobuf:"varint,4,opt,name=runTime" json:"runTime,omitempty"`
@@ -47,34 +47,128 @@ func (m *LoadTestReq) String() string { return proto.CompactTextString(m) }
 func (*LoadTestReq) ProtoMessage()    {}
 
 type LoadTestResp struct {
-	Start  *LoadTestResp_Started  `protobuf:"bytes,1,opt,name=start" json:"start,omitempty"`
-	Finish *LoadTestResp_Finished `protobuf:"bytes,2,opt,name=finish" json:"finish,omitempty"`
-	Error  *LoadTestResp_Errored  `protobuf:"bytes,3,opt,name=error" json:"error,omitempty"`
+	// Types that are valid to be assigned to Phase:
+	//	*LoadTestResp_Start
+	//	*LoadTestResp_Finish
+	//	*LoadTestResp_Error
+	Phase isLoadTestResp_Phase `protobuf_oneof:"phase"`
 }
 
 func (m *LoadTestResp) Reset()         { *m = LoadTestResp{} }
 func (m *LoadTestResp) String() string { return proto.CompactTextString(m) }
 func (*LoadTestResp) ProtoMessage()    {}
 
-func (m *LoadTestResp) GetStart() *LoadTestResp_Started {
+type isLoadTestResp_Phase interface {
+	isLoadTestResp_Phase()
+}
+
+type LoadTestResp_Start struct {
+	Start *LoadTestResp_Started `protobuf:"bytes,1,opt,name=start,oneof"`
+}
+type LoadTestResp_Finish struct {
+	Finish *LoadTestResp_Finished `protobuf:"bytes,2,opt,name=finish,oneof"`
+}
+type LoadTestResp_Error struct {
+	Error *LoadTestResp_Errored `protobuf:"bytes,3,opt,name=error,oneof"`
+}
+
+func (*LoadTestResp_Start) isLoadTestResp_Phase()  {}
+func (*LoadTestResp_Finish) isLoadTestResp_Phase() {}
+func (*LoadTestResp_Error) isLoadTestResp_Phase()  {}
+
+func (m *LoadTestResp) GetPhase() isLoadTestResp_Phase {
 	if m != nil {
-		return m.Start
+		return m.Phase
+	}
+	return nil
+}
+
+func (m *LoadTestResp) GetStart() *LoadTestResp_Started {
+	if x, ok := m.GetPhase().(*LoadTestResp_Start); ok {
+		return x.Start
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetFinish() *LoadTestResp_Finished {
-	if m != nil {
-		return m.Finish
+	if x, ok := m.GetPhase().(*LoadTestResp_Finish); ok {
+		return x.Finish
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetError() *LoadTestResp_Errored {
-	if m != nil {
-		return m.Error
+	if x, ok := m.GetPhase().(*LoadTestResp_Error); ok {
+		return x.Error
 	}
 	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*LoadTestResp) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _LoadTestResp_OneofMarshaler, _LoadTestResp_OneofUnmarshaler, []interface{}{
+		(*LoadTestResp_Start)(nil),
+		(*LoadTestResp_Finish)(nil),
+		(*LoadTestResp_Error)(nil),
+	}
+}
+
+func _LoadTestResp_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*LoadTestResp)
+	// phase
+	switch x := m.Phase.(type) {
+	case *LoadTestResp_Start:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Start); err != nil {
+			return err
+		}
+	case *LoadTestResp_Finish:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Finish); err != nil {
+			return err
+		}
+	case *LoadTestResp_Error:
+		b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Error); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("LoadTestResp.Phase has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _LoadTestResp_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*LoadTestResp)
+	switch tag {
+	case 1: // phase.start
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(LoadTestResp_Started)
+		err := b.DecodeMessage(msg)
+		m.Phase = &LoadTestResp_Start{msg}
+		return true, err
+	case 2: // phase.finish
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(LoadTestResp_Finished)
+		err := b.DecodeMessage(msg)
+		m.Phase = &LoadTestResp_Finish{msg}
+		return true, err
+	case 3: // phase.error
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(LoadTestResp_Errored)
+		err := b.DecodeMessage(msg)
+		m.Phase = &LoadTestResp_Error{msg}
+		return true, err
+	default:
+		return false, nil
+	}
 }
 
 type LoadTestResp_Started struct {
@@ -108,11 +202,20 @@ func (m *RegisterExecutorReq) String() string { return proto.CompactTextString(m
 func (*RegisterExecutorReq) ProtoMessage()    {}
 
 type RegisterExecutorResp struct {
+	InfluxIpPort   string `protobuf:"bytes,1,opt,name=influx_ip_port" json:"influx_ip_port,omitempty"`
+	InfluxUsername string `protobuf:"bytes,2,opt,name=influx_username" json:"influx_username,omitempty"`
+	InfluxPassword string `protobuf:"bytes,3,opt,name=influx_password" json:"influx_password,omitempty"`
+	InfluxDb       string `protobuf:"bytes,4,opt,name=influx_db" json:"influx_db,omitempty"`
+	InfluxSsl      bool   `protobuf:"varint,5,opt,name=influx_ssl" json:"influx_ssl,omitempty"`
 }
 
 func (m *RegisterExecutorResp) Reset()         { *m = RegisterExecutorResp{} }
 func (m *RegisterExecutorResp) String() string { return proto.CompactTextString(m) }
 func (*RegisterExecutorResp) ProtoMessage()    {}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
 
 // Client API for Scheduler service
 

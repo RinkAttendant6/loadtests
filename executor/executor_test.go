@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,8 +13,9 @@ import (
 
 	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/controller"
-	exgrpc "github.com/lgpeterson/loadtests/executor/executorGRPC"
+	exgrpc "github.com/lgpeterson/loadtests/executor/pb"
 	"github.com/lgpeterson/loadtests/executor/persister"
+	scheduler "github.com/lgpeterson/loadtests/scheduler/pb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -33,7 +35,10 @@ end
 `
 	badScript = `testtesttesttest test`
 
-	defaultPort = "50053"
+	defaultPort   = 50053
+	schedulerIP   = "localhost:50048"
+	schedulerPort = ":50048"
+	dropletId     = 125446
 )
 
 func TestValidLoggingCode(t *testing.T) {
@@ -42,7 +47,8 @@ func TestValidLoggingCode(t *testing.T) {
 
 	timeMock := clock.NewMock()
 	server := "http://localhost"
-	wg, s := startServer(t, &gp, timeMock, defaultPort)
+	sch, wg2 := startScheduler(t)
+	s, wg := startServer(t, &gp, timeMock, defaultPort)
 	scriptName := fmt.Sprintf("test: %d", rand.Int63())
 	r, err := sendMesage(&exgrpc.CommandMessage{
 		ScriptName:                scriptName,
@@ -70,8 +76,10 @@ func TestValidLoggingCode(t *testing.T) {
 	}
 
 	// Stop the server and wait for the executor stop finish
+	sch.Stop()
 	s.Stop()
 	wg.Wait()
+	wg2.Wait()
 
 	// Validate responses
 	if r.Status == "OK" {
@@ -86,7 +94,8 @@ func TestValidGetCode(t *testing.T) {
 	gp := persister.TestPersister{}
 
 	timeMock := clock.NewMock()
-	wg, s := startServer(t, &gp, timeMock, defaultPort)
+	sch, wg2 := startScheduler(t)
+	s, wg := startServer(t, &gp, timeMock, defaultPort)
 	numReq := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -128,8 +137,10 @@ func TestValidGetCode(t *testing.T) {
 	}
 
 	// Stop the server and wait for the executor stop finish
+	sch.Stop()
 	s.Stop()
 	wg.Wait()
+	wg2.Wait()
 	// Validate responses
 	if r.Status == "OK" {
 		if numReq == 0 {
@@ -149,7 +160,8 @@ func TestInvalidCode(t *testing.T) {
 
 	timeMock := clock.NewMock()
 	server := "http://localhost"
-	wg, s := startServer(t, &gp, timeMock, defaultPort)
+	sch, wg2 := startScheduler(t)
+	s, wg := startServer(t, &gp, timeMock, defaultPort)
 	_, err := sendMesage(&exgrpc.CommandMessage{
 		ScriptName:                "test",
 		URL:                       server,
@@ -166,8 +178,10 @@ func TestInvalidCode(t *testing.T) {
 		t.Errorf("No error from server")
 	}
 
+	sch.Stop()
 	s.Stop()
 	wg.Wait()
+	wg2.Wait()
 }
 
 func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
@@ -181,26 +195,62 @@ func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
 	}
 }
 
-func startServer(t *testing.T, gp controller.Persister, timeMock clock.Clock, port string) (*sync.WaitGroup, *grpc.Server) {
+func startServer(t *testing.T, gp controller.Persister, timeMock clock.Clock, port int) (*grpc.Server, *sync.WaitGroup) {
 	// Loop forever, because I will wait for commands from the grpc server
 	wg := sync.WaitGroup{}
-	s, err := controller.NewGRPCExecutorStarter(gp, port, &wg, timeMock)
+	s, err := controller.NewGRPCExecutorStarter(gp, schedulerIP, port, dropletId, &wg, timeMock)
 	if err != nil {
 		t.Errorf("err starting grpc server %v", err)
 	}
-	return &wg, s
+	return s, &wg
 }
 
-func sendMesage(message *exgrpc.CommandMessage, port string) (*exgrpc.StatusMessage, error) {
+func startScheduler(t *testing.T) (*grpc.Server, *sync.WaitGroup) {
+	wg := sync.WaitGroup{}
+	s := grpc.NewServer()
+	sched := &mockScheduler{}
+	lis, err := net.Listen("tcp", schedulerPort)
+	if err != nil {
+		t.Fatalf("Grpc server had an error: %v", err)
+	}
+	scheduler.RegisterSchedulerServer(s, sched)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := s.Serve(lis)
+		if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+			t.Fatalf("Grpc server had an error: %v", err)
+		}
+	}()
+	return s, &wg
+}
 
-	option := grpc.WithTimeout(15 * time.Second)
+func sendMesage(message *exgrpc.CommandMessage, port int) (*exgrpc.StatusMessage, error) {
+	timeout := grpc.WithTimeout(15 * time.Second)
+	insecure := grpc.WithInsecure()
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%s", port), option)
-	defer conn.Close()
+	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), timeout, insecure)
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	c := exgrpc.NewCommanderClient(conn)
 
 	return c.ExecuteCommand(context.Background(), message)
+}
+
+type mockScheduler struct{}
+
+func (f *mockScheduler) RegisterExecutor(context.Context, *scheduler.RegisterExecutorReq) (*scheduler.RegisterExecutorResp, error) {
+	return &scheduler.RegisterExecutorResp{
+		InfluxIpPort:   "localhost:12345",
+		InfluxUsername: "test",
+		InfluxPassword: "test",
+		InfluxDb:       "test",
+		InfluxSsl:      false,
+	}, nil
+}
+
+func (f *mockScheduler) LoadTest(in *scheduler.LoadTestReq, s scheduler.Scheduler_LoadTestServer) error {
+	return nil
 }

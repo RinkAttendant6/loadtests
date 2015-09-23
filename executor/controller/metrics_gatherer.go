@@ -3,7 +3,7 @@ package controller
 import (
 	"time"
 
-	"github.com/lgpeterson/influxdb/client"
+	"github.com/influxdb/influxdb/client"
 )
 
 type MetricsGatherer struct {

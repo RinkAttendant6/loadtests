@@ -8,18 +8,18 @@ service Commander {
 
 
 message StatusMessage {
-	optional string status = 1;
+	string status = 1;
 }
 
 message CommandMessage {
-	optional string URL = 1;
-	optional string script = 2;
-	optional string scriptName = 3;
-	optional int32 runTime = 4;
-	optional int32 maxWorkers = 5;
-	optional double growthFactor = 6;
-	optional double timeBetweenGrowth = 7;
-	optional int32 startingRequestsPerSecond = 8;
-	optional int32 maxRequestsPerSecond = 9;
+	string URL = 1;
+	string script = 2;
+	string scriptName = 3;
+	int32 runTime = 4;
+	int32 maxWorkers = 5;
+	double growthFactor = 6;
+	double timeBetweenGrowth = 7;
+	int32 startingRequestsPerSecond = 8;
+	int32 maxRequestsPerSecond = 9;
 }
 

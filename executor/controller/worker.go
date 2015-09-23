@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/lgpeterson/loadtests/executor/engine"
-	"github.com/lgpeterson/loadtests/executor/executorGRPC"
+	"github.com/lgpeterson/loadtests/executor/pb"
 	"golang.org/x/net/context"
 )
 

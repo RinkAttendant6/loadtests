@@ -3,7 +3,7 @@
 FROM golang
 
 EXPOSE 50051
-ENTRYPOINT ["/go/bin/executord", "50051"]
+ENTRYPOINT ["/go/bin/executord"]
 
 RUN go get github.com/tools/godep 
 

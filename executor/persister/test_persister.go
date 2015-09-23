@@ -24,3 +24,6 @@ func (f *TestPersister) Persist(scriptName string, metrics *controller.MetricsGa
 
 	return nil
 }
+func (f *TestPersister) SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error {
+	return nil
+}

@@ -6,25 +6,21 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/lgpeterson/influxdb/client"
+	"github.com/influxdb/influxdb/client"
 	"github.com/lgpeterson/loadtests/executor/controller"
 )
 
 // InfluxPersister is a persister that will save the output to a file
 type InfluxPersister struct {
-	client *client.Client
+	client   *client.Client
+	database string
 }
 
-var (
-	database = "ltm_metrics"
-	ssl      = true
-)
-
 // NewInfluxPersister creates a new influx perisistor with the influx IP
-func NewInfluxPersister(influxIP string, user string, pass string) (*InfluxPersister, error) {
-	url, err := client.ParseConnectionString(influxIP, ssl)
+func (f *InfluxPersister) SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error {
+	url, err := client.ParseConnectionString(influxIP, useSsl)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	tr := &http.Transport{
@@ -39,14 +35,17 @@ func NewInfluxPersister(influxIP string, user string, pass string) (*InfluxPersi
 
 	c, err := client.NewClient(config)
 
-	return &InfluxPersister{c}, err
+	f.database = database
+	f.client = c
+
+	return err
 }
 
 func (f *InfluxPersister) CountOccurrences(testID string, tableName string) (int, error) {
 	cmd := fmt.Sprintf("select count(id) from %s where id=%s", tableName, testID)
 	query := client.Query{
 		Command:  cmd,
-		Database: database,
+		Database: f.database,
 	}
 	result, err := f.client.Query(query)
 	if err != nil {
@@ -71,7 +70,7 @@ func (f *InfluxPersister) DropData(tableName string) error {
 	cmd := fmt.Sprintf("drop series %s", tableName)
 	query := client.Query{
 		Command:  cmd,
-		Database: database,
+		Database: f.database,
 	}
 	_, err := f.client.Query(query)
 	return err
@@ -82,7 +81,7 @@ func (f *InfluxPersister) Persist(scriptName string, metrics *controller.Metrics
 	addId(metrics, scriptName)
 	bps := client.BatchPoints{
 		Points:          metrics.Points,
-		Database:        database,
+		Database:        f.database,
 		RetentionPolicy: "default",
 	}
 	_, err := f.client.Write(bps)
