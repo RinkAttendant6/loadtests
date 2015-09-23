@@ -37,17 +37,17 @@
 		{
 			"ImportPath": "github.com/influxdb/influxdb/client",
 			"Comment": "v0.9.4-rc1-129-gdb46649",
-			"Rev": "db46649442b844e3752b6948064c16759755c543"
+			"Rev": "07c9d40b874cf1c50b97f33268efe2c24b6434bf"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/models",
 			"Comment": "v0.9.4-rc1-129-gdb46649",
-			"Rev": "db46649442b844e3752b6948064c16759755c543"
+			"Rev": "07c9d40b874cf1c50b97f33268efe2c24b6434bf"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/pkg/escape",
 			"Comment": "v0.9.4-rc1-129-gdb46649",
-			"Rev": "db46649442b844e3752b6948064c16759755c543"
+			"Rev": "07c9d40b874cf1c50b97f33268efe2c24b6434bf"
 		},
 		{
 			"ImportPath": "github.com/tent/http-link-go",
