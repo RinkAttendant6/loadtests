@@ -9,5 +9,5 @@ RUN go get github.com/tools/godep
 
 ADD . $GOPATH/src/github.com/lgpeterson/loadtests/
 WORKDIR $GOPATH/src/github.com/lgpeterson/loadtests/executor
-RUN godep go build -o $GOPATH/bin/executord github.com/lgpeterson/loadtests/executor
+RUN godep go build -o $GOPATH/bin/executord github.com/lgpeterson/loadtests/executor/cmd/executord
 
