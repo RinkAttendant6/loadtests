@@ -3,6 +3,7 @@ package persister
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -42,7 +43,7 @@ func (f *InfluxPersister) SetupPersister(influxIP string, user string, pass stri
 }
 
 func (f *InfluxPersister) CountOccurrences(testID string, tableName string) (int, error) {
-	cmd := fmt.Sprintf("select count(id) from %s where id=%s", tableName, testID)
+	cmd := fmt.Sprintf("select count(id) from %s where id=%q", tableName, testID)
 	query := client.Query{
 		Command:  cmd,
 		Database: f.database,
@@ -57,7 +58,8 @@ func (f *InfluxPersister) CountOccurrences(testID string, tableName string) (int
 	if len(res) == 0 {
 		return 0, fmt.Errorf("no rows found")
 	}
-	stringCount := fmt.Sprintf("%v", res)
+	stringCount := fmt.Sprintf("%v", res[0])
+	log.Printf("Returned string was: %s", res[0].Series[0].Values[0][1])
 	count, err := strconv.ParseInt(stringCount, 10, 0)
 	if err != nil {
 		return 0, fmt.Errorf("what I got back was not an int: %v", err)

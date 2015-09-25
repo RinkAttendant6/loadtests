@@ -37,15 +37,15 @@ func (m *StatusMessage) String() string { return proto.CompactTextString(m) }
 func (*StatusMessage) ProtoMessage()    {}
 
 type CommandMessage struct {
-	URL                       string  `protobuf:"bytes,1,opt,name=URL" json:"URL,omitempty"`
+	Url                       string  `protobuf:"bytes,1,opt,name=url" json:"url,omitempty"`
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
-	ScriptName                string  `protobuf:"bytes,3,opt,name=scriptName" json:"scriptName,omitempty"`
-	RunTime                   int32   `protobuf:"varint,4,opt,name=runTime" json:"runTime,omitempty"`
-	MaxWorkers                int32   `protobuf:"varint,5,opt,name=maxWorkers" json:"maxWorkers,omitempty"`
-	GrowthFactor              float64 `protobuf:"fixed64,6,opt,name=growthFactor" json:"growthFactor,omitempty"`
-	TimeBetweenGrowth         float64 `protobuf:"fixed64,7,opt,name=timeBetweenGrowth" json:"timeBetweenGrowth,omitempty"`
-	StartingRequestsPerSecond int32   `protobuf:"varint,8,opt,name=startingRequestsPerSecond" json:"startingRequestsPerSecond,omitempty"`
-	MaxRequestsPerSecond      int32   `protobuf:"varint,9,opt,name=maxRequestsPerSecond" json:"maxRequestsPerSecond,omitempty"`
+	ScriptName                string  `protobuf:"bytes,3,opt,name=script_name" json:"script_name,omitempty"`
+	RunTime                   int32   `protobuf:"varint,4,opt,name=run_time" json:"run_time,omitempty"`
+	MaxWorkers                int32   `protobuf:"varint,6,opt,name=max_workers" json:"max_workers,omitempty"`
+	GrowthFactor              float64 `protobuf:"fixed64,8,opt,name=growth_factor" json:"growth_factor,omitempty"`
+	TimeBetweenGrowth         float64 `protobuf:"fixed64,9,opt,name=time_between_growth" json:"time_between_growth,omitempty"`
+	StartingRequestsPerSecond int32   `protobuf:"varint,10,opt,name=starting_requests_per_second" json:"starting_requests_per_second,omitempty"`
+	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=max_requests_per_second" json:"max_requests_per_second,omitempty"`
 }
 
 func (m *CommandMessage) Reset()         { *m = CommandMessage{} }

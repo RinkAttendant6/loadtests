@@ -12,14 +12,14 @@ message StatusMessage {
 }
 
 message CommandMessage {
-	string URL = 1;
-	string script = 2;
-	string scriptName = 3;
-	int32 runTime = 4;
-	int32 maxWorkers = 5;
-	double growthFactor = 6;
-	double timeBetweenGrowth = 7;
-	int32 startingRequestsPerSecond = 8;
-	int32 maxRequestsPerSecond = 9;
+    string url                      = 1;
+    string script                    = 2;
+    string script_name                = 3;
+    int32  run_time                   = 4;
+    int32  max_workers                = 6;
+    double growth_factor              = 8;
+    double time_between_growth         = 9;
+    int32  starting_requests_per_second = 10;
+    int32  max_requests_per_second      = 11;
 }
 

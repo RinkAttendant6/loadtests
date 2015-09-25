@@ -8,15 +8,15 @@ service Scheduler {
 }
 
 message LoadTestReq {
-    string URL                       = 1;
+    string url                      = 1;
     string script                    = 2;
-    string scriptName                = 3;
-    int32  runTime                   = 4;
-    int32  maxWorkers                = 6;
-    double growthFactor              = 8;
-    double timeBetweenGrowth         = 9;
-    int32  startingRequestsPerSecond = 10;
-    int32  maxRequestsPerSecond      = 11;
+    string script_name                = 3;
+    int32  run_time                   = 4;
+    int32  max_workers                = 6;
+    double growth_factor              = 8;
+    double time_between_growth         = 9;
+    int32  starting_requests_per_second = 10;
+    int32  max_requests_per_second      = 11;
 }
 
 message LoadTestResp {
@@ -37,7 +37,7 @@ message RegisterExecutorReq {
 }
 
 message RegisterExecutorResp {
-    string influx_ip_port  = 1;
+    string influx_addr = 1;
     string influx_username = 2;
     string influx_password = 3;
     string influx_db       = 4;

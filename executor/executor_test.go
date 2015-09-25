@@ -52,7 +52,7 @@ func TestValidLoggingCode(t *testing.T) {
 	scriptName := fmt.Sprintf("test: %d", rand.Int63())
 	r, err := sendMesage(&exgrpc.CommandMessage{
 		ScriptName:                scriptName,
-		URL:                       server,
+		Url:                       server,
 		Script:                    goodLogScript,
 		RunTime:                   10,
 		MaxWorkers:                100,
@@ -69,7 +69,7 @@ func TestValidLoggingCode(t *testing.T) {
 	// It should be done in 10 seconds
 	doneTime.Add((10 * time.Second) + time.Second)
 
-	time.AfterFunc(time.Second*5, func() { panic("too long") })
+	time.AfterFunc(time.Second*50, func() { panic("too long") })
 
 	for timeMock.Now().Before(doneTime.Now()) {
 		timeMock.Add(time.Millisecond * 10)
@@ -111,7 +111,7 @@ func TestValidGetCode(t *testing.T) {
 	scriptName := fmt.Sprintf("test: %d", rand.Int63())
 	r, err := sendMesage(&exgrpc.CommandMessage{
 		ScriptName:                scriptName,
-		URL:                       srv.URL,
+		Url:                       srv.URL,
 		Script:                    script,
 		RunTime:                   10,
 		MaxWorkers:                100,
@@ -164,7 +164,7 @@ func TestInvalidCode(t *testing.T) {
 	s, wg := startServer(t, &gp, timeMock, defaultPort)
 	_, err := sendMesage(&exgrpc.CommandMessage{
 		ScriptName:                "test",
-		URL:                       server,
+		Url:                       server,
 		Script:                    badScript,
 		RunTime:                   10,
 		MaxWorkers:                100,
@@ -186,7 +186,12 @@ func TestInvalidCode(t *testing.T) {
 
 func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
 	if len(gp.Content) < 1 {
-		t.Error("No return")
+		// attempt to wait for it, it might be slow
+		time.Sleep(time.Second * 5)
+		// Now I check again, if it fails then the code is taking to long
+		if len(gp.Content) < 1 {
+			t.Error("No return")
+		}
 	}
 	for i := 0; i < len(gp.Content); i++ {
 		if !strings.Contains(gp.Content[i], server) {
@@ -198,10 +203,24 @@ func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
 func startServer(t *testing.T, gp controller.Persister, timeMock clock.Clock, port int) (*grpc.Server, *sync.WaitGroup) {
 	// Loop forever, because I will wait for commands from the grpc server
 	wg := sync.WaitGroup{}
-	s, err := controller.NewGRPCExecutorStarter(gp, schedulerIP, port, dropletId, &wg, timeMock)
+	s, err := controller.NewGRPCExecutorStarter(gp, schedulerIP, port, dropletId, timeMock)
 	if err != nil {
 		t.Errorf("err starting grpc server %v", err)
 	}
+
+	lis, err := controller.CreateListenPort(port)
+	if err != nil {
+		t.Fatalf("err creating listening port %v", err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := s.Serve(lis)
+		if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+			t.Fatalf("Grpc server had an error: %v", err)
+		}
+	}()
 	return s, &wg
 }
 
@@ -243,7 +262,7 @@ type mockScheduler struct{}
 
 func (f *mockScheduler) RegisterExecutor(context.Context, *scheduler.RegisterExecutorReq) (*scheduler.RegisterExecutorResp, error) {
 	return &scheduler.RegisterExecutorResp{
-		InfluxIpPort:   "localhost:12345",
+		InfluxAddr:     "localhost:12345",
 		InfluxUsername: "test",
 		InfluxPassword: "test",
 		InfluxDb:       "test",

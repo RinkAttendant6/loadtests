@@ -31,15 +31,15 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type LoadTestReq struct {
-	URL                       string  `protobuf:"bytes,1,opt,name=URL" json:"URL,omitempty"`
+	Url                       string  `protobuf:"bytes,1,opt,name=url" json:"url,omitempty"`
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
-	ScriptName                string  `protobuf:"bytes,3,opt,name=scriptName" json:"scriptName,omitempty"`
-	RunTime                   int32   `protobuf:"varint,4,opt,name=runTime" json:"runTime,omitempty"`
-	MaxWorkers                int32   `protobuf:"varint,6,opt,name=maxWorkers" json:"maxWorkers,omitempty"`
-	GrowthFactor              float64 `protobuf:"fixed64,8,opt,name=growthFactor" json:"growthFactor,omitempty"`
-	TimeBetweenGrowth         float64 `protobuf:"fixed64,9,opt,name=timeBetweenGrowth" json:"timeBetweenGrowth,omitempty"`
-	StartingRequestsPerSecond int32   `protobuf:"varint,10,opt,name=startingRequestsPerSecond" json:"startingRequestsPerSecond,omitempty"`
-	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=maxRequestsPerSecond" json:"maxRequestsPerSecond,omitempty"`
+	ScriptName                string  `protobuf:"bytes,3,opt,name=script_name" json:"script_name,omitempty"`
+	RunTime                   int32   `protobuf:"varint,4,opt,name=run_time" json:"run_time,omitempty"`
+	MaxWorkers                int32   `protobuf:"varint,6,opt,name=max_workers" json:"max_workers,omitempty"`
+	GrowthFactor              float64 `protobuf:"fixed64,8,opt,name=growth_factor" json:"growth_factor,omitempty"`
+	TimeBetweenGrowth         float64 `protobuf:"fixed64,9,opt,name=time_between_growth" json:"time_between_growth,omitempty"`
+	StartingRequestsPerSecond int32   `protobuf:"varint,10,opt,name=starting_requests_per_second" json:"starting_requests_per_second,omitempty"`
+	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=max_requests_per_second" json:"max_requests_per_second,omitempty"`
 }
 
 func (m *LoadTestReq) Reset()         { *m = LoadTestReq{} }
@@ -202,7 +202,7 @@ func (m *RegisterExecutorReq) String() string { return proto.CompactTextString(m
 func (*RegisterExecutorReq) ProtoMessage()    {}
 
 type RegisterExecutorResp struct {
-	InfluxIpPort   string `protobuf:"bytes,1,opt,name=influx_ip_port" json:"influx_ip_port,omitempty"`
+	InfluxAddr     string `protobuf:"bytes,1,opt,name=influx_addr" json:"influx_addr,omitempty"`
 	InfluxUsername string `protobuf:"bytes,2,opt,name=influx_username" json:"influx_username,omitempty"`
 	InfluxPassword string `protobuf:"bytes,3,opt,name=influx_password" json:"influx_password,omitempty"`
 	InfluxDb       string `protobuf:"bytes,4,opt,name=influx_db" json:"influx_db,omitempty"`

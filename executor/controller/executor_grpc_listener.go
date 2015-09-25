@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/benbjohnson/clock"
@@ -22,36 +20,23 @@ type GRPCExecutorStarter struct {
 }
 
 // NewGRPCExecutorStarter this creates a new GRPCExecutorStarter and sets the directory to look in
-func NewGRPCExecutorStarter(persister Persister, schedulerIp string, port int, dropletId int, wg *sync.WaitGroup, clock clock.Clock) (*grpc.Server, error) {
-	err := registerDroplet(dropletId, persister, schedulerIp, port)
+func NewGRPCExecutorStarter(persister Persister, schedulerAddr string, port int, dropletId int, clock clock.Clock) (*grpc.Server, error) {
+	err := registerDroplet(dropletId, persister, schedulerAddr, port)
 	if err != nil {
 		return nil, err
 	}
 
-	listenPort := fmt.Sprintf(":%d", port)
-	lis, err := net.Listen("tcp", listenPort)
-	wg.Add(1)
-	if err != nil {
-		return nil, err
-	}
 	executorStarter := &GRPCExecutorStarter{
 		persister: persister,
 		clock:     clock,
 	}
 	s := grpc.NewServer()
 	executor.RegisterCommanderServer(s, executorStarter)
-	go func() {
-		defer wg.Done()
-		err := s.Serve(lis)
-		if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
-			log.Fatalf("Grpc server had an error: %v", err)
-		}
-	}()
 	return s, nil
 }
 
 func registerDroplet(dropletId int, persister Persister,
-	schedulerIp string, port int) error {
+	schedulerAddr string, port int) error {
 
 	req := &scheduler.RegisterExecutorReq{
 		Port:      int64(port),
@@ -61,7 +46,7 @@ func registerDroplet(dropletId int, persister Persister,
 	timeout := grpc.WithTimeout(15 * time.Second)
 	insecure := grpc.WithInsecure()
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(schedulerIp, timeout, insecure)
+	conn, err := grpc.Dial(schedulerAddr, timeout, insecure)
 	if err != nil {
 		return err
 	}
@@ -73,7 +58,7 @@ func registerDroplet(dropletId int, persister Persister,
 		return err
 	}
 
-	return persister.SetupPersister(msg.InfluxIpPort, msg.InfluxUsername, msg.InfluxPassword, msg.InfluxDb, msg.InfluxSsl)
+	return persister.SetupPersister(msg.InfluxAddr, msg.InfluxUsername, msg.InfluxPassword, msg.InfluxDb, msg.InfluxSsl)
 }
 
 // ExecuteCommand is the server interface for listening for a command
@@ -86,4 +71,13 @@ func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *executor.C
 		return nil, err
 	}
 	return &executor.StatusMessage{Status: "OK"}, nil
+}
+
+func CreateListenPort(port int) (net.Listener, error) {
+	listenPort := fmt.Sprintf(":%d", port)
+	lis, err := net.Listen("tcp", listenPort)
+	if err != nil {
+		return nil, err
+	}
+	return lis, nil
 }
