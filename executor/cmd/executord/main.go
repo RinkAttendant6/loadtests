@@ -45,6 +45,7 @@ func start(schedulerAddr string, port int, dropletId int) {
 	}
 	log.Printf("Server started on port %d", port)
 	s.Serve(lis)
+	lis.Close()
 }
 
 func getDropletId() (int, error) {
