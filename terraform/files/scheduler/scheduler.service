@@ -1,0 +1,11 @@
+[Unit]
+Description=Load scheduler service
+
+[Service]
+EnvironmentFile=-/etc/scheduler/scheduler.env
+ExecStart=/opt/schedulerd
+Restart=always
+RestartSec=0
+
+[Install]
+WantedBy=multi-user.target
