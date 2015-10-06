@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/influxdb/influxdb/client"
+	"github.com/lgpeterson/influxdb/client"
 	"github.com/lgpeterson/loadtests/executor/controller"
 )
 
