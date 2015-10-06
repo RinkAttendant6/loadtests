@@ -17,8 +17,6 @@ It has these top-level messages:
 package pb
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
 
 import (
 	context "golang.org/x/net/context"
@@ -26,9 +24,11 @@ import (
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
 
 type LoadTestReq struct {
 	Url                       string  `protobuf:"bytes,1,opt,name=url" json:"url,omitempty"`
@@ -47,129 +47,51 @@ func (m *LoadTestReq) String() string { return proto.CompactTextString(m) }
 func (*LoadTestReq) ProtoMessage()    {}
 
 type LoadTestResp struct {
-	// Types that are valid to be assigned to Phase:
-	//	*LoadTestResp_Start
-	//	*LoadTestResp_Finish
-	//	*LoadTestResp_Error
-	Phase isLoadTestResp_Phase `protobuf_oneof:"phase"`
+	Preparing *LoadTestResp_Preparing `protobuf:"bytes,1,opt,name=preparing" json:"preparing,omitempty"`
+	Start     *LoadTestResp_Started   `protobuf:"bytes,2,opt,name=start" json:"start,omitempty"`
+	Finish    *LoadTestResp_Finished  `protobuf:"bytes,3,opt,name=finish" json:"finish,omitempty"`
+	Error     *LoadTestResp_Errored   `protobuf:"bytes,4,opt,name=error" json:"error,omitempty"`
 }
 
 func (m *LoadTestResp) Reset()         { *m = LoadTestResp{} }
 func (m *LoadTestResp) String() string { return proto.CompactTextString(m) }
 func (*LoadTestResp) ProtoMessage()    {}
 
-type isLoadTestResp_Phase interface {
-	isLoadTestResp_Phase()
-}
-
-type LoadTestResp_Start struct {
-	Start *LoadTestResp_Started `protobuf:"bytes,1,opt,name=start,oneof"`
-}
-type LoadTestResp_Finish struct {
-	Finish *LoadTestResp_Finished `protobuf:"bytes,2,opt,name=finish,oneof"`
-}
-type LoadTestResp_Error struct {
-	Error *LoadTestResp_Errored `protobuf:"bytes,3,opt,name=error,oneof"`
-}
-
-func (*LoadTestResp_Start) isLoadTestResp_Phase()  {}
-func (*LoadTestResp_Finish) isLoadTestResp_Phase() {}
-func (*LoadTestResp_Error) isLoadTestResp_Phase()  {}
-
-func (m *LoadTestResp) GetPhase() isLoadTestResp_Phase {
+func (m *LoadTestResp) GetPreparing() *LoadTestResp_Preparing {
 	if m != nil {
-		return m.Phase
+		return m.Preparing
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetStart() *LoadTestResp_Started {
-	if x, ok := m.GetPhase().(*LoadTestResp_Start); ok {
-		return x.Start
+	if m != nil {
+		return m.Start
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetFinish() *LoadTestResp_Finished {
-	if x, ok := m.GetPhase().(*LoadTestResp_Finish); ok {
-		return x.Finish
+	if m != nil {
+		return m.Finish
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetError() *LoadTestResp_Errored {
-	if x, ok := m.GetPhase().(*LoadTestResp_Error); ok {
-		return x.Error
+	if m != nil {
+		return m.Error
 	}
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*LoadTestResp) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _LoadTestResp_OneofMarshaler, _LoadTestResp_OneofUnmarshaler, []interface{}{
-		(*LoadTestResp_Start)(nil),
-		(*LoadTestResp_Finish)(nil),
-		(*LoadTestResp_Error)(nil),
-	}
+type LoadTestResp_Preparing struct {
+	Count int32 `protobuf:"varint,1,opt,name=count" json:"count,omitempty"`
 }
 
-func _LoadTestResp_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*LoadTestResp)
-	// phase
-	switch x := m.Phase.(type) {
-	case *LoadTestResp_Start:
-		b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Start); err != nil {
-			return err
-		}
-	case *LoadTestResp_Finish:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Finish); err != nil {
-			return err
-		}
-	case *LoadTestResp_Error:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Error); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("LoadTestResp.Phase has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _LoadTestResp_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*LoadTestResp)
-	switch tag {
-	case 1: // phase.start
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(LoadTestResp_Started)
-		err := b.DecodeMessage(msg)
-		m.Phase = &LoadTestResp_Start{msg}
-		return true, err
-	case 2: // phase.finish
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(LoadTestResp_Finished)
-		err := b.DecodeMessage(msg)
-		m.Phase = &LoadTestResp_Finish{msg}
-		return true, err
-	case 3: // phase.error
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(LoadTestResp_Errored)
-		err := b.DecodeMessage(msg)
-		m.Phase = &LoadTestResp_Error{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
+func (m *LoadTestResp_Preparing) Reset()         { *m = LoadTestResp_Preparing{} }
+func (m *LoadTestResp_Preparing) String() string { return proto.CompactTextString(m) }
+func (*LoadTestResp_Preparing) ProtoMessage()    {}
 
 type LoadTestResp_Started struct {
 }
@@ -186,6 +108,7 @@ func (m *LoadTestResp_Finished) String() string { return proto.CompactTextString
 func (*LoadTestResp_Finished) ProtoMessage()    {}
 
 type LoadTestResp_Errored struct {
+	Error string `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
 }
 
 func (m *LoadTestResp_Errored) Reset()         { *m = LoadTestResp_Errored{} }
@@ -212,10 +135,6 @@ type RegisterExecutorResp struct {
 func (m *RegisterExecutorResp) Reset()         { *m = RegisterExecutorResp{} }
 func (m *RegisterExecutorResp) String() string { return proto.CompactTextString(m) }
 func (*RegisterExecutorResp) ProtoMessage()    {}
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
 
 // Client API for Scheduler service
 

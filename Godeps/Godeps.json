@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/lgpeterson/loadtests",
-	"GoVersion": "go1.5",
+	"GoVersion": "go1.5.1",
 	"Packages": [
 		"./..."
 	],
@@ -8,6 +8,11 @@
 		{
 			"ImportPath": "github.com/Shopify/go-lua",
 			"Rev": "01100eb78d65b313b80db5900310e6a4d2a06844"
+		},
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.8.7",
+			"Rev": "418b41d23a1bf978c06faea5313ba194650ac088"
 		},
 		{
 			"ImportPath": "github.com/benbjohnson/clock",
@@ -33,6 +38,10 @@
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
 			"Rev": "d8840cbb2baa915f4836edda4750050a2c0b7aea"
+		},
+		{
+			"ImportPath": "github.com/ianschenck/envflag",
+			"Rev": "9111d830d133f952887a936367fb0211c3134f0d"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/client",
@@ -64,6 +73,10 @@
 		{
 			"ImportPath": "golang.org/x/net/trace",
 			"Rev": "db8e4de5b2d6653f66aea53094624468caad15d2"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "c30abeebd1a0c41f6e0d9ad6d26fd9daf8aff7d6"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",

@@ -15,8 +15,6 @@ It has these top-level messages:
 package executorGRPC
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
 
 import (
 	context "golang.org/x/net/context"
@@ -24,9 +22,11 @@ import (
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
 
 type StatusMessage struct {
 	Status string `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
@@ -51,10 +51,6 @@ type CommandMessage struct {
 func (m *CommandMessage) Reset()         { *m = CommandMessage{} }
 func (m *CommandMessage) String() string { return proto.CompactTextString(m) }
 func (*CommandMessage) ProtoMessage()    {}
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
 
 // Client API for Commander service
 

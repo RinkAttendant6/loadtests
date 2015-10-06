@@ -8,25 +8,31 @@ service Scheduler {
 }
 
 message LoadTestReq {
-    string url                      = 1;
-    string script                    = 2;
-    string script_name                = 3;
-    int32  run_time                   = 4;
-    int32  max_workers                = 6;
-    double growth_factor              = 8;
-    double time_between_growth         = 9;
+    string url                          = 1;
+    string script                       = 2;
+    string script_name                  = 3;
+    int32  run_time                     = 4;
+    int32  max_workers                  = 6;
+    double growth_factor                = 8;
+    double time_between_growth          = 9;
     int32  starting_requests_per_second = 10;
     int32  max_requests_per_second      = 11;
 }
 
 message LoadTestResp {
+    message Preparing {
+        int32 count = 1;
+    };
     message Started {};
     message Finished {};
-    message Errored {};
+    message Errored {
+        string error = 1;
+    };
     oneof phase {
-        Started  start  = 1;
-        Finished finish = 2;
-        Errored  error  = 3;
+        Preparing preparing = 1;
+        Started  start  = 2;
+        Finished finish = 3;
+        Errored  error  = 4;
     }
 }
 
