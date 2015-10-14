@@ -56,7 +56,7 @@ func (m *CommandMessage) GetScriptParams() *ScriptParams {
 type ScriptParams struct {
 	Url                       string  `protobuf:"bytes,1,opt,name=url" json:"url,omitempty"`
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
-	ScriptName                string  `protobuf:"bytes,3,opt,name=script_name" json:"script_name,omitempty"`
+	ScriptId                  string  `protobuf:"bytes,3,opt,name=script_id" json:"script_id,omitempty"`
 	RunTime                   int32   `protobuf:"varint,4,opt,name=run_time" json:"run_time,omitempty"`
 	MaxWorkers                int32   `protobuf:"varint,6,opt,name=max_workers" json:"max_workers,omitempty"`
 	GrowthFactor              float64 `protobuf:"fixed64,8,opt,name=growth_factor" json:"growth_factor,omitempty"`

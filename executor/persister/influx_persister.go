@@ -79,8 +79,8 @@ func (f *InfluxPersister) DropData(tableName string) error {
 }
 
 // Persist saves the data to a file with public permissions
-func (f *InfluxPersister) Persist(scriptName string, metrics *controller.MetricsGatherer) error {
-	addId(metrics, scriptName)
+func (f *InfluxPersister) Persist(scriptId string, metrics *controller.MetricsGatherer) error {
+	addId(metrics, scriptId)
 	bps := client.BatchPoints{
 		Points:          metrics.Points,
 		Database:        f.database,
@@ -90,10 +90,10 @@ func (f *InfluxPersister) Persist(scriptName string, metrics *controller.Metrics
 	return err
 }
 
-func addId(metrics *controller.MetricsGatherer, scriptName string) {
+func addId(metrics *controller.MetricsGatherer, scriptId string) {
 	for _, point := range metrics.Points {
 		cols := point.Fields
-		cols["id"] = scriptName
+		cols["id"] = scriptId
 		point.Fields = cols
 	}
 }

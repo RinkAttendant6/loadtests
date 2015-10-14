@@ -50,9 +50,9 @@ func TestValidLoggingCode(t *testing.T) {
 	server := "http://localhost"
 	sch, wg2 := startScheduler(t)
 	s, wg := startServer(t, &gp, timeMock, defaultPort)
-	scriptName := fmt.Sprintf("test: %d", rand.Int63())
+	scriptId := fmt.Sprintf("%d", rand.Int63())
 	r, conn, err := sendMesage(&exgrpc.ScriptParams{
-		ScriptName:                scriptName,
+		ScriptId:                  scriptId,
 		Url:                       server,
 		Script:                    goodLogScript,
 		RunTime:                   10,
@@ -92,7 +92,7 @@ func TestValidLoggingCode(t *testing.T) {
 
 	// Validate responses
 	if status.Status == "OK" {
-		verifyResults(scriptName, t, &gp)
+		verifyResults(scriptId, t, &gp)
 	} else {
 		t.Fatalf("Received error when executing: %s", status.Status)
 	}
@@ -117,9 +117,9 @@ func TestValidGetCode(t *testing.T) {
 
 	script := fmt.Sprintf(goodGetScript, srv.URL)
 
-	scriptName := fmt.Sprintf("test: %d", rand.Int63())
+	scriptId := fmt.Sprintf("%d", rand.Int63())
 	r, conn, err := sendMesage(&exgrpc.ScriptParams{
-		ScriptName:                scriptName,
+		ScriptId:                  scriptId,
 		Url:                       srv.URL,
 		Script:                    script,
 		RunTime:                   10,
@@ -164,7 +164,7 @@ func TestValidGetCode(t *testing.T) {
 			t.Fatal("Received no get requests from script")
 		}
 		// Check that the script stored the correct test ID
-		verifyResults(scriptName, t, &gp)
+		verifyResults(scriptId, t, &gp)
 		// Make sure it got good responses
 		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
 	} else {
@@ -191,9 +191,9 @@ func TestHalt(t *testing.T) {
 
 	script := fmt.Sprintf(goodGetScript, srv.URL)
 
-	scriptName := fmt.Sprintf("test: %d", rand.Int63())
+	scriptId := fmt.Sprintf("%d", rand.Int63())
 	r, conn, err := sendMesage(&exgrpc.ScriptParams{
-		ScriptName:                scriptName,
+		ScriptId:                  scriptId,
 		Url:                       srv.URL,
 		Script:                    script,
 		RunTime:                   10,
@@ -253,7 +253,7 @@ func TestHalt(t *testing.T) {
 			t.Fatal("Received no get requests from script")
 		}
 		// Check that the script stored the correct test ID
-		verifyResults(scriptName, t, &gp)
+		verifyResults(scriptId, t, &gp)
 		// Make sure it got good responses
 		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
 		// Make sure that it did not keep sending after the halt
@@ -284,9 +284,9 @@ func TestDisconnect(t *testing.T) {
 
 	script := fmt.Sprintf(goodGetScript, srv.URL)
 
-	scriptName := fmt.Sprintf("test: %d", rand.Int63())
+	scriptId := fmt.Sprintf("%d", rand.Int63())
 	r, conn, err := sendMesage(&exgrpc.ScriptParams{
-		ScriptName:                scriptName,
+		ScriptId:                  scriptId,
 		Url:                       srv.URL,
 		Script:                    script,
 		RunTime:                   10,
@@ -344,7 +344,7 @@ func TestDisconnect(t *testing.T) {
 
 	// Validate responses
 	// Check that the script stored the correct test ID
-	verifyResults(scriptName, t, &gp)
+	verifyResults(scriptId, t, &gp)
 	// Make sure it got good responses
 	verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
 	// Make sure that it did not keep sending after the halt
@@ -361,7 +361,7 @@ func TestInvalidCode(t *testing.T) {
 	sch, wg2 := startScheduler(t)
 	s, wg := startServer(t, &gp, timeMock, defaultPort)
 	response, conn, err := sendMesage(&exgrpc.ScriptParams{
-		ScriptName:                "test",
+		ScriptId:                  "1243",
 		Url:                       server,
 		Script:                    badScript,
 		RunTime:                   2,

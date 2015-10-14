@@ -90,6 +90,7 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 		return serverErr
 	} else if halted {
 		// I want to tell the server I halted
+		log.Println("Halted")
 		err = server.Send(&executor.StatusMessage{Status: "Halted"})
 		return err
 	} else {
@@ -122,6 +123,7 @@ func listenForHalt(done *bool, halted *bool, serverErr *error, server executor.C
 				// Stop execution and turn the halted flag on so I know to send the 'Halted' message back
 				*done = true
 				*halted = true
+				log.Println("Halting now")
 				return
 			} else {
 				// I will only accept the 'Halt' command at this stage

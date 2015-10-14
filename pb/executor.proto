@@ -19,7 +19,7 @@ message CommandMessage {
 message ScriptParams {
     string url                          = 1;
     string script                       = 2;
-    string script_name                  = 3;
+    string script_id                    = 3;
     int32  run_time                     = 4;
     int32  max_workers                  = 6;
     double growth_factor                = 8;

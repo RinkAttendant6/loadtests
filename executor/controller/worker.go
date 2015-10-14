@@ -45,7 +45,7 @@ func (w *worker) execute() {
 				continue
 			}
 
-			err = w.Persister.Persist(w.Command.ScriptName, metrics)
+			err = w.Persister.Persist(w.Command.ScriptId, metrics)
 			if err != nil {
 				// I assume I can keep going if the lua script encoutered an error
 				log.Printf("Error saving output of lua script: %v", err)

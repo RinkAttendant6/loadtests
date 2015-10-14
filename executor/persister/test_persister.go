@@ -12,13 +12,13 @@ type TestPersister struct {
 }
 
 // Persist TestPersister the data to a file with public permissions
-func (f *TestPersister) Persist(scriptName string, metrics *controller.MetricsGatherer) error {
+func (f *TestPersister) Persist(scriptId string, metrics *controller.MetricsGatherer) error {
 	for _, point := range metrics.Points {
-		data := fmt.Sprintf("%s: %s %d", scriptName, point.Fields["url"], point.Fields["code"])
+		data := fmt.Sprintf("%s: %s %d", scriptId, point.Fields["url"], point.Fields["code"])
 		f.Content = append(f.Content, data)
 	}
 	if len(metrics.Points) == 0 {
-		data := fmt.Sprintf("%s: ", scriptName)
+		data := fmt.Sprintf("%s: ", scriptId)
 		f.Content = append(f.Content, data)
 	}
 
