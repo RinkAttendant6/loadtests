@@ -11,6 +11,7 @@ It is generated from these files:
 It has these top-level messages:
 	StatusMessage
 	CommandMessage
+	ScriptParams
 */
 package executorGRPC
 
@@ -37,6 +38,22 @@ func (m *StatusMessage) String() string { return proto.CompactTextString(m) }
 func (*StatusMessage) ProtoMessage()    {}
 
 type CommandMessage struct {
+	Command      string        `protobuf:"bytes,1,opt,name=command" json:"command,omitempty"`
+	ScriptParams *ScriptParams `protobuf:"bytes,2,opt,name=script_params" json:"script_params,omitempty"`
+}
+
+func (m *CommandMessage) Reset()         { *m = CommandMessage{} }
+func (m *CommandMessage) String() string { return proto.CompactTextString(m) }
+func (*CommandMessage) ProtoMessage()    {}
+
+func (m *CommandMessage) GetScriptParams() *ScriptParams {
+	if m != nil {
+		return m.ScriptParams
+	}
+	return nil
+}
+
+type ScriptParams struct {
 	Url                       string  `protobuf:"bytes,1,opt,name=url" json:"url,omitempty"`
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
 	ScriptName                string  `protobuf:"bytes,3,opt,name=script_name" json:"script_name,omitempty"`
@@ -48,14 +65,18 @@ type CommandMessage struct {
 	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=max_requests_per_second" json:"max_requests_per_second,omitempty"`
 }
 
-func (m *CommandMessage) Reset()         { *m = CommandMessage{} }
-func (m *CommandMessage) String() string { return proto.CompactTextString(m) }
-func (*CommandMessage) ProtoMessage()    {}
+func (m *ScriptParams) Reset()         { *m = ScriptParams{} }
+func (m *ScriptParams) String() string { return proto.CompactTextString(m) }
+func (*ScriptParams) ProtoMessage()    {}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
 
 // Client API for Commander service
 
 type CommanderClient interface {
-	ExecuteCommand(ctx context.Context, in *CommandMessage, opts ...grpc.CallOption) (*StatusMessage, error)
+	ExecuteCommand(ctx context.Context, opts ...grpc.CallOption) (Commander_ExecuteCommandClient, error)
 }
 
 type commanderClient struct {
@@ -66,45 +87,83 @@ func NewCommanderClient(cc *grpc.ClientConn) CommanderClient {
 	return &commanderClient{cc}
 }
 
-func (c *commanderClient) ExecuteCommand(ctx context.Context, in *CommandMessage, opts ...grpc.CallOption) (*StatusMessage, error) {
-	out := new(StatusMessage)
-	err := grpc.Invoke(ctx, "/executorGRPC.Commander/ExecuteCommand", in, out, c.cc, opts...)
+func (c *commanderClient) ExecuteCommand(ctx context.Context, opts ...grpc.CallOption) (Commander_ExecuteCommandClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Commander_serviceDesc.Streams[0], c.cc, "/executorGRPC.Commander/ExecuteCommand", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &commanderExecuteCommandClient{stream}
+	return x, nil
+}
+
+type Commander_ExecuteCommandClient interface {
+	Send(*CommandMessage) error
+	Recv() (*StatusMessage, error)
+	grpc.ClientStream
+}
+
+type commanderExecuteCommandClient struct {
+	grpc.ClientStream
+}
+
+func (x *commanderExecuteCommandClient) Send(m *CommandMessage) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *commanderExecuteCommandClient) Recv() (*StatusMessage, error) {
+	m := new(StatusMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // Server API for Commander service
 
 type CommanderServer interface {
-	ExecuteCommand(context.Context, *CommandMessage) (*StatusMessage, error)
+	ExecuteCommand(Commander_ExecuteCommandServer) error
 }
 
 func RegisterCommanderServer(s *grpc.Server, srv CommanderServer) {
 	s.RegisterService(&_Commander_serviceDesc, srv)
 }
 
-func _Commander_ExecuteCommand_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(CommandMessage)
-	if err := codec.Unmarshal(buf, in); err != nil {
+func _Commander_ExecuteCommand_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(CommanderServer).ExecuteCommand(&commanderExecuteCommandServer{stream})
+}
+
+type Commander_ExecuteCommandServer interface {
+	Send(*StatusMessage) error
+	Recv() (*CommandMessage, error)
+	grpc.ServerStream
+}
+
+type commanderExecuteCommandServer struct {
+	grpc.ServerStream
+}
+
+func (x *commanderExecuteCommandServer) Send(m *StatusMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *commanderExecuteCommandServer) Recv() (*CommandMessage, error) {
+	m := new(CommandMessage)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	out, err := srv.(CommanderServer).ExecuteCommand(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+	return m, nil
 }
 
 var _Commander_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "executorGRPC.Commander",
 	HandlerType: (*CommanderServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "ExecuteCommand",
-			Handler:    _Commander_ExecuteCommand_Handler,
+			StreamName:    "ExecuteCommand",
+			Handler:       _Commander_ExecuteCommand_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
 }

@@ -62,17 +62,74 @@ func registerDroplet(dropletId int, persister Persister,
 }
 
 // ExecuteCommand is the server interface for listening for a command
-func (s *GRPCExecutorStarter) ExecuteCommand(ctx context.Context, in *executor.CommandMessage) (*executor.StatusMessage, error) {
+func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCommandServer) error {
+	var done = false
+	var halted = false
+	var serverErr error
+	in, err := server.Recv()
+	if err != nil {
+		log.Printf("Error from scheduler: %v", err)
+	}
+	if in.Command != "Run" {
+		// I will only accept the 'Run' command at this stage
+		err = server.Send(&executor.StatusMessage{Status: "Invalid"})
+		return err
+	}
 	log.Printf("Received command: %v", in)
-	executorController := &Controller{Command: in, Context: ctx, Clock: s.clock}
-	err := executorController.RunInstructions(s.persister)
+	executorController := &Controller{Command: in.ScriptParams, Server: server, Clock: s.clock}
+
+	go listenForHalt(&done, &halted, &serverErr, server)
+
+	err = executorController.RunInstructions(s.persister, &done)
+
 	if err != nil {
 		log.Printf("Error executing: %v", err)
-		return nil, err
+		return err
+	} else if serverErr != nil {
+		// If the recv wait gave an error I want to return it, if possible
+		return serverErr
+	} else if halted {
+		// I want to tell the server I halted
+		err = server.Send(&executor.StatusMessage{Status: "Halted"})
+		return err
+	} else {
+		err = server.Send(&executor.StatusMessage{Status: "OK"})
+		return err
 	}
-	return &executor.StatusMessage{Status: "OK"}, nil
 }
 
+func listenForHalt(done *bool, halted *bool, serverErr *error, server executor.Commander_ExecuteCommandServer) {
+	defer func() {
+		// This function will execute if the connection is closed
+		// There is no way to recv with polling, so I resort to catching the panic when the connection closes
+		if serverErr := recover(); serverErr != nil {
+			fmt.Printf("Recovered from panic: %q \n", serverErr)
+			// I set done to true, just in case the connection to the server was lost, instead of this ending when it was finished
+			*done = true
+			return
+		}
+	}()
+	for {
+		mes, serverErr := server.Recv()
+		if serverErr != nil {
+			log.Printf("err from scheduler: %v", serverErr)
+			// If there is an error, I assume it means that the server may not be able to
+			// communicate with the executor, and halt the execution
+			*done = true
+			return
+		} else if mes != nil {
+			if mes.Command == "Halt" {
+				// Stop execution and turn the halted flag on so I know to send the 'Halted' message back
+				*done = true
+				*halted = true
+				return
+			} else {
+				// I will only accept the 'Halt' command at this stage
+				server.Send(&executor.StatusMessage{Status: "Invalid"})
+			}
+		}
+	}
+}
 func CreateListenPort(port int) (net.Listener, error) {
 	listenPort := fmt.Sprintf(":%d", port)
 	lis, err := net.Listen("tcp", listenPort)

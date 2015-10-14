@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/benbjohnson/clock"
 	"github.com/lgpeterson/loadtests/executor/engine"
 	"github.com/lgpeterson/loadtests/executor/pb"
@@ -14,8 +12,8 @@ import (
 
 // Controller this will read what IP to ping from a file
 type Controller struct {
-	Command *executorGRPC.CommandMessage
-	Context context.Context
+	Command *executorGRPC.ScriptParams
+	Server  executorGRPC.Commander_ExecuteCommandServer
 	Clock   clock.Clock
 }
 
@@ -26,19 +24,18 @@ type Persister interface {
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger
-func (f *Controller) RunInstructions(persister Persister) error {
+func (f *Controller) RunInstructions(persister Persister, done *bool) error {
 	script := strings.NewReader(f.Command.Script)
 	_, err := engine.Lua(script)
 	if err != nil {
 		return err
 	}
-	go f.runScript(persister)
+	f.runScript(persister, done)
 	return nil
 }
 
-func (f *Controller) runScript(persister Persister) {
-	done := make(chan struct{})
-	jobChannel := make(chan struct{})
+func (f *Controller) runScript(persister Persister, done *bool) {
+	jobChannel := make(chan struct{}, f.Command.MaxRequestsPerSecond)
 	defer close(jobChannel)
 	var wg sync.WaitGroup
 
@@ -70,15 +67,21 @@ func (f *Controller) runScript(persister Persister) {
 
 	go func() {
 		f.Clock.Sleep(time.Second * time.Duration(f.Command.RunTime))
-		close(done)
+		*done = true
 	}()
 
 	for {
 		select {
-		case <-done:
-			wg.Wait()
-			return
 		case <-ticker.C:
+			if *done {
+				// The workers also listen for this done flag,
+				// so I send a few more jobs to close them all out.
+				for i := int32(0); i < f.Command.MaxWorkers; i++ {
+					jobChannel <- struct{}{}
+				}
+				wg.Wait()
+				return
+			}
 			for i := 1; i < iterations; i++ {
 				jobChannel <- struct{}{}
 			}

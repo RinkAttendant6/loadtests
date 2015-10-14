@@ -3,7 +3,7 @@ syntax = "proto3";
 package executorGRPC;
 
 service Commander {
-	 rpc ExecuteCommand (CommandMessage) returns (StatusMessage) {}
+	 rpc ExecuteCommand (stream CommandMessage) returns (stream StatusMessage) {}
 }
 
 
@@ -12,13 +12,18 @@ message StatusMessage {
 }
 
 message CommandMessage {
-    string url                      = 1;
-    string script                    = 2;
-    string script_name                = 3;
-    int32  run_time                   = 4;
-    int32  max_workers                = 6;
-    double growth_factor              = 8;
-    double time_between_growth         = 9;
+    string       command        = 1;
+    ScriptParams script_params  = 2;
+}
+
+message ScriptParams {
+    string url                          = 1;
+    string script                       = 2;
+    string script_name                  = 3;
+    int32  run_time                     = 4;
+    int32  max_workers                  = 6;
+    double growth_factor                = 8;
+    double time_between_growth          = 9;
     int32  starting_requests_per_second = 10;
     int32  max_requests_per_second      = 11;
 }

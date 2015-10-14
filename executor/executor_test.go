@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -50,7 +51,7 @@ func TestValidLoggingCode(t *testing.T) {
 	sch, wg2 := startScheduler(t)
 	s, wg := startServer(t, &gp, timeMock, defaultPort)
 	scriptName := fmt.Sprintf("test: %d", rand.Int63())
-	r, err := sendMesage(&exgrpc.CommandMessage{
+	r, conn, err := sendMesage(&exgrpc.ScriptParams{
 		ScriptName:                scriptName,
 		Url:                       server,
 		Script:                    goodLogScript,
@@ -64,6 +65,7 @@ func TestValidLoggingCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error from grpc: %v", err)
 	}
+
 	// Create the time when it should be done
 	doneTime := clock.NewMock()
 	// It should be done in 10 seconds
@@ -72,8 +74,15 @@ func TestValidLoggingCode(t *testing.T) {
 	time.AfterFunc(time.Second*50, func() { panic("too long") })
 
 	for timeMock.Now().Before(doneTime.Now()) {
-		timeMock.Add(time.Millisecond * 10)
+		timeMock.Add(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 10)
 	}
+
+	status, err := r.Recv()
+	if err != nil {
+		t.Fatalf("Received error when executing: %v", err)
+	}
+	conn.Close()
 
 	// Stop the server and wait for the executor stop finish
 	sch.Stop()
@@ -82,10 +91,10 @@ func TestValidLoggingCode(t *testing.T) {
 	wg2.Wait()
 
 	// Validate responses
-	if r.Status == "OK" {
+	if status.Status == "OK" {
 		verifyResults(scriptName, t, &gp)
 	} else {
-		t.Fatalf("Received error when executing: %s", r.Status)
+		t.Fatalf("Received error when executing: %s", status.Status)
 	}
 }
 
@@ -109,7 +118,7 @@ func TestValidGetCode(t *testing.T) {
 	script := fmt.Sprintf(goodGetScript, srv.URL)
 
 	scriptName := fmt.Sprintf("test: %d", rand.Int63())
-	r, err := sendMesage(&exgrpc.CommandMessage{
+	r, conn, err := sendMesage(&exgrpc.ScriptParams{
 		ScriptName:                scriptName,
 		Url:                       srv.URL,
 		Script:                    script,
@@ -123,6 +132,7 @@ func TestValidGetCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error from grpc: %v", err)
 	}
+
 	// Create the time when it should be done
 	doneTime := clock.NewMock()
 	// It should be done in 10 seconds
@@ -131,18 +141,25 @@ func TestValidGetCode(t *testing.T) {
 	// Make sure it doesn't deadlock
 	time.AfterFunc(time.Second*50, func() { panic("too long") })
 
-	// Mock time passage, every 10ms
+	// Mock time passage, every 500ms
 	for timeMock.Now().Before(doneTime.Now()) {
-		timeMock.Add(time.Millisecond * 10)
+		timeMock.Add(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 10)
 	}
 
+	status, err := r.Recv()
+	if err != nil {
+		t.Fatalf("Received error when executing: %v", err)
+	}
+	conn.Close()
 	// Stop the server and wait for the executor stop finish
 	sch.Stop()
 	s.Stop()
 	wg.Wait()
 	wg2.Wait()
+
 	// Validate responses
-	if r.Status == "OK" {
+	if status.Status == "OK" {
 		if numReq == 0 {
 			t.Fatal("Received no get requests from script")
 		}
@@ -151,7 +168,188 @@ func TestValidGetCode(t *testing.T) {
 		// Make sure it got good responses
 		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
 	} else {
-		t.Fatalf("Received error when executing: %s", r.Status)
+		t.Fatalf("Received error when executing: %s", status.Status)
+	}
+}
+
+func TestHalt(t *testing.T) {
+	//TODO remove race condition for test cases
+	gp := persister.TestPersister{}
+
+	timeMock := clock.NewMock()
+	sch, wg2 := startScheduler(t)
+	s, wg := startServer(t, &gp, timeMock, defaultPort)
+	numReq := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.Write([]byte("test"))
+			numReq++
+		}
+	}))
+	defer srv.Close()
+
+	script := fmt.Sprintf(goodGetScript, srv.URL)
+
+	scriptName := fmt.Sprintf("test: %d", rand.Int63())
+	r, conn, err := sendMesage(&exgrpc.ScriptParams{
+		ScriptName:                scriptName,
+		Url:                       srv.URL,
+		Script:                    script,
+		RunTime:                   10,
+		MaxWorkers:                100,
+		GrowthFactor:              1.5,
+		TimeBetweenGrowth:         1,
+		StartingRequestsPerSecond: 10,
+		MaxRequestsPerSecond:      1000,
+	}, defaultPort)
+	if err != nil {
+		t.Fatalf("Error from grpc: %v", err)
+	}
+
+	// Create the time when it should be done
+	haltTime := clock.NewMock()
+	// It should be done in 10 seconds
+	haltTime.Add((3 * time.Second))
+
+	doneTime := clock.NewMock()
+	// It should be done in 10 seconds
+	doneTime.Add((10 * time.Second) + time.Second)
+
+	// Make sure it doesn't deadlock
+	time.AfterFunc(time.Second*50, func() { panic("too long") })
+
+	// Mock time passage, every 500ms
+	for timeMock.Now().Before(haltTime.Now()) {
+		timeMock.Add(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 10)
+	}
+
+	r.Send(&exgrpc.CommandMessage{Command: "Halt"})
+	// Make sure it had time to fully halt before contining
+	time.Sleep(time.Millisecond * 500)
+	// Get the current number of requests after the halt
+	numRequests := len(gp.Content)
+
+	// Continue Mock time passage, every 500ms
+	for timeMock.Now().Before(doneTime.Now()) {
+		timeMock.Add(time.Millisecond * 500)
+	}
+
+	status, err := r.Recv()
+	if err != nil {
+		t.Fatalf("Received error when executing: %v", err)
+	}
+	conn.Close()
+	// Stop the server and wait for the executor stop finish
+	sch.Stop()
+	s.Stop()
+	wg.Wait()
+	wg2.Wait()
+
+	// Validate responses
+	if status.Status == "Halted" {
+		if numReq == 0 {
+			t.Fatal("Received no get requests from script")
+		}
+		// Check that the script stored the correct test ID
+		verifyResults(scriptName, t, &gp)
+		// Make sure it got good responses
+		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
+		// Make sure that it did not keep sending after the halt
+		if len(gp.Content) != numRequests {
+			t.Fatalf("number of tests not the same, expected %d, actual: %d", numRequests, len(gp.Content))
+		}
+	} else {
+		t.Fatalf("Received error when executing: %s", status.Status)
+	}
+}
+
+func TestDisconnect(t *testing.T) {
+	//TODO remove race condition for test cases
+	gp := persister.TestPersister{}
+
+	timeMock := clock.NewMock()
+	sch, wg2 := startScheduler(t)
+	s, wg := startServer(t, &gp, timeMock, defaultPort)
+	numReq := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.Write([]byte("test"))
+			numReq++
+		}
+	}))
+	defer srv.Close()
+
+	script := fmt.Sprintf(goodGetScript, srv.URL)
+
+	scriptName := fmt.Sprintf("test: %d", rand.Int63())
+	r, conn, err := sendMesage(&exgrpc.ScriptParams{
+		ScriptName:                scriptName,
+		Url:                       srv.URL,
+		Script:                    script,
+		RunTime:                   10,
+		MaxWorkers:                100,
+		GrowthFactor:              1.5,
+		TimeBetweenGrowth:         1,
+		StartingRequestsPerSecond: 10,
+		MaxRequestsPerSecond:      1000,
+	}, defaultPort)
+	if err != nil {
+		t.Fatalf("Error from grpc: %v", err)
+	}
+
+	// Create the time when it should be done
+	haltTime := clock.NewMock()
+	// It should be done in 10 seconds
+	haltTime.Add((3 * time.Second))
+
+	doneTime := clock.NewMock()
+	// It should be done in 10 seconds
+	doneTime.Add((10 * time.Second) + time.Second)
+
+	// Make sure it doesn't deadlock
+	time.AfterFunc(time.Second*50, func() { panic("too long") })
+
+	// Mock time passage, every 500ms
+	for timeMock.Now().Before(haltTime.Now()) {
+		timeMock.Add(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 10)
+	}
+
+	conn.Close()
+	// Make sure it had time to fully halt before contining
+	time.Sleep(time.Millisecond * 500)
+	log.Println("Connection closed")
+	// Get the current number of requests after the halt
+	numRequests := len(gp.Content)
+
+	// Continue Mock time passage, every 500ms
+	for timeMock.Now().Before(doneTime.Now()) {
+		timeMock.Add(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 10)
+	}
+
+	_, err = r.Recv()
+	if err == nil {
+
+		t.Fatalf("Received no error when asking for response")
+	}
+	// Stop the server and wait for the executor stop finish
+	sch.Stop()
+	s.Stop()
+	wg.Wait()
+	wg2.Wait()
+
+	// Validate responses
+	// Check that the script stored the correct test ID
+	verifyResults(scriptName, t, &gp)
+	// Make sure it got good responses
+	verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
+	// Make sure that it did not keep sending after the halt
+	if len(gp.Content) != numRequests {
+		t.Fatalf("number of tests not the same, expected %d, actual: %d", numRequests, len(gp.Content))
 	}
 }
 
@@ -162,11 +360,11 @@ func TestInvalidCode(t *testing.T) {
 	server := "http://localhost"
 	sch, wg2 := startScheduler(t)
 	s, wg := startServer(t, &gp, timeMock, defaultPort)
-	_, err := sendMesage(&exgrpc.CommandMessage{
+	response, conn, err := sendMesage(&exgrpc.ScriptParams{
 		ScriptName:                "test",
 		Url:                       server,
 		Script:                    badScript,
-		RunTime:                   10,
+		RunTime:                   2,
 		MaxWorkers:                100,
 		GrowthFactor:              1.5,
 		TimeBetweenGrowth:         1,
@@ -174,8 +372,15 @@ func TestInvalidCode(t *testing.T) {
 		MaxRequestsPerSecond:      1000,
 	}, defaultPort)
 	// Validate responses
-	if err == nil {
-		t.Errorf("No error from server")
+	if err != nil {
+		t.Errorf("Error connecting to server: %v", err)
+	} else {
+		_, err = response.Recv()
+		if err == nil {
+			t.Errorf("No error from server")
+		}
+
+		conn.Close()
 	}
 
 	sch.Stop()
@@ -244,18 +449,22 @@ func startScheduler(t *testing.T) (*grpc.Server, *sync.WaitGroup) {
 	return s, &wg
 }
 
-func sendMesage(message *exgrpc.CommandMessage, port int) (*exgrpc.StatusMessage, error) {
+func sendMesage(message *exgrpc.ScriptParams, port int) (exgrpc.Commander_ExecuteCommandClient, *grpc.ClientConn, error) {
 	timeout := grpc.WithTimeout(15 * time.Second)
 	insecure := grpc.WithInsecure()
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", port), timeout, insecure)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	defer conn.Close()
 	c := exgrpc.NewCommanderClient(conn)
 
-	return c.ExecuteCommand(context.Background(), message)
+	client, err := c.ExecuteCommand(context.Background())
+	if err != nil {
+		return nil, nil, err
+	}
+	err = client.Send(&exgrpc.CommandMessage{Command: "Run", ScriptParams: message})
+	return client, conn, err
 }
 
 type mockScheduler struct{}
