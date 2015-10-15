@@ -15,7 +15,7 @@ type worker struct {
 	Command    *executorGRPC.ScriptParams
 	Wait       *sync.WaitGroup
 	JobChannel <-chan struct{}
-	Done       *bool
+	Done       <-chan struct{}
 }
 
 func (w *worker) execute() {
@@ -23,10 +23,9 @@ func (w *worker) execute() {
 	defer w.Wait.Done()
 	for {
 		select {
+		case <-w.Done:
+			return
 		case <-w.JobChannel:
-			if *w.Done {
-				return
-			}
 			scriptReader := strings.NewReader(w.Command.Script)
 			metrics := NewMetricsGatherer()
 			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(metrics))

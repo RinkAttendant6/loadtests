@@ -63,7 +63,7 @@ func registerDroplet(dropletId int, persister Persister,
 
 // ExecuteCommand is the server interface for listening for a command
 func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCommandServer) error {
-	var done = false
+	var halt = make(chan struct{})
 	var halted = false
 	var serverErr error
 	in, err := server.Recv()
@@ -78,9 +78,9 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 	log.Printf("Received command: %v", in)
 	executorController := &Controller{Command: in.ScriptParams, Server: server, Clock: s.clock}
 
-	go listenForHalt(&done, &halted, &serverErr, server)
+	go listenForHalt(halt, &halted, &serverErr, server)
 
-	err = executorController.RunInstructions(s.persister, &done)
+	err = executorController.RunInstructions(s.persister, halt)
 
 	if err != nil {
 		log.Printf("Error executing: %v", err)
@@ -99,14 +99,14 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 	}
 }
 
-func listenForHalt(done *bool, halted *bool, serverErr *error, server executor.Commander_ExecuteCommandServer) {
+func listenForHalt(halt chan struct{}, halted *bool, serverErr *error, server executor.Commander_ExecuteCommandServer) {
 	defer func() {
 		// This function will execute if the connection is closed
 		// There is no way to recv with polling, so I resort to catching the panic when the connection closes
 		if serverErr := recover(); serverErr != nil {
 			fmt.Printf("Recovered from panic: %q \n", serverErr)
-			// I set done to true, just in case the connection to the server was lost, instead of this ending when it was finished
-			*done = true
+			// I set halt to true, just in case the connection to the server was lost, instead of this ending when it was finished
+			close(halt)
 			return
 		}
 	}()
@@ -116,13 +116,13 @@ func listenForHalt(done *bool, halted *bool, serverErr *error, server executor.C
 			log.Printf("err from scheduler: %v", serverErr)
 			// If there is an error, I assume it means that the server may not be able to
 			// communicate with the executor, and halt the execution
-			*done = true
+			close(halt)
 			return
 		} else if mes != nil {
 			if mes.Command == "Halt" {
 				// Stop execution and turn the halted flag on so I know to send the 'Halted' message back
-				*done = true
 				*halted = true
+				close(halt)
 				log.Println("Halting now")
 				return
 			} else {

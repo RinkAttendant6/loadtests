@@ -24,30 +24,34 @@ type Persister interface {
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger
-func (f *Controller) RunInstructions(persister Persister, done *bool) error {
+func (f *Controller) RunInstructions(persister Persister, halt chan struct{}) error {
 	script := strings.NewReader(f.Command.Script)
 	_, err := engine.Lua(script)
 	if err != nil {
 		return err
 	}
-	f.runScript(persister, done)
+	f.runScript(persister, halt)
 	return nil
 }
 
-func (f *Controller) runScript(persister Persister, done *bool) {
+func (f *Controller) runScript(persister Persister, halt chan struct{}) {
 	jobChannel := make(chan struct{}, f.Command.MaxRequestsPerSecond)
+	done := make(chan struct{})
+	var completeChannels []chan struct{}
 	defer close(jobChannel)
 	var wg sync.WaitGroup
 
 	// Create all the workers that will listen for jobs
 	for i := int32(0); i < f.Command.MaxWorkers; i++ {
+		workerDone := make(chan struct{})
 		w := &worker{
 			Persister:  persister,
 			Command:    f.Command,
 			Wait:       &wg,
 			JobChannel: jobChannel,
-			Done:       done,
+			Done:       workerDone,
 		}
+		completeChannels = append(completeChannels, workerDone)
 		go w.execute()
 	}
 
@@ -67,21 +71,18 @@ func (f *Controller) runScript(persister Persister, done *bool) {
 
 	go func() {
 		f.Clock.Sleep(time.Second * time.Duration(f.Command.RunTime))
-		*done = true
+		close(done)
 	}()
 
 	for {
 		select {
+		case <-halt:
+			stopWorkers(completeChannels, &wg)
+			return
+		case <-done:
+			stopWorkers(completeChannels, &wg)
+			return
 		case <-ticker.C:
-			if *done {
-				// The workers also listen for this done flag,
-				// so I send a few more jobs to close them all out.
-				for i := int32(0); i < f.Command.MaxWorkers; i++ {
-					jobChannel <- struct{}{}
-				}
-				wg.Wait()
-				return
-			}
 			for i := 1; i < iterations; i++ {
 				jobChannel <- struct{}{}
 			}
@@ -99,6 +100,14 @@ func (f *Controller) runScript(persister Persister, done *bool) {
 		}
 	}
 
+}
+
+func stopWorkers(completeChannels []chan struct{}, wg *sync.WaitGroup) {
+	for _, workerDoneChannel := range completeChannels {
+		workerDoneChannel <- struct{}{}
+		close(workerDoneChannel)
+	}
+	wg.Wait()
 }
 
 func getNumberOfIterations(tickTimer time.Duration, requestsPerSecond int) int {
