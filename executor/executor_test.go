@@ -68,7 +68,6 @@ func TestValidLoggingCode(t *testing.T) {
 
 	// Create the time when it should be done
 	doneTime := clock.NewMock()
-	// It should be done in 10 seconds
 	doneTime.Add((10 * time.Second) + time.Second)
 
 	time.AfterFunc(time.Second*50, func() { panic("too long") })
@@ -135,13 +134,12 @@ func TestValidGetCode(t *testing.T) {
 
 	// Create the time when it should be done
 	doneTime := clock.NewMock()
-	// It should be done in 10 seconds
 	doneTime.Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
 	time.AfterFunc(time.Second*50, func() { panic("too long") })
 
-	// Mock time passage, every 500ms
+	// Mock time passage,
 	for timeMock.Now().Before(doneTime.Now()) {
 		timeMock.Add(time.Millisecond * 500)
 		time.Sleep(time.Millisecond * 10)
@@ -207,13 +205,12 @@ func TestHalt(t *testing.T) {
 		t.Fatalf("Error from grpc: %v", err)
 	}
 
-	// Create the time when it should be done
+	// I will cancel it after the time
 	haltTime := clock.NewMock()
-	// It should be done in 10 seconds
 	haltTime.Add((3 * time.Second))
 
+	// Create the time when it should be done
 	doneTime := clock.NewMock()
-	// It should be done in 10 seconds
 	doneTime.Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
@@ -227,7 +224,7 @@ func TestHalt(t *testing.T) {
 
 	r.Send(&exgrpc.CommandMessage{Command: "Halt"})
 	// Make sure it had time to fully halt before contining
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 50)
 	// Get the current number of requests after the halt
 	numRequests := len(gp.Content)
 
@@ -300,19 +297,18 @@ func TestDisconnect(t *testing.T) {
 		t.Fatalf("Error from grpc: %v", err)
 	}
 
-	// Create the time when it should be done
+	// I will disconnect after the time given
 	haltTime := clock.NewMock()
-	// It should be done in 10 seconds
 	haltTime.Add((3 * time.Second))
 
 	doneTime := clock.NewMock()
-	// It should be done in 10 seconds
+	// It should be done after that time
 	doneTime.Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
 	time.AfterFunc(time.Second*50, func() { panic("too long") })
 
-	// Mock time passage, every 500ms
+	// Mock time passage
 	for timeMock.Now().Before(haltTime.Now()) {
 		timeMock.Add(time.Millisecond * 500)
 		time.Sleep(time.Millisecond * 10)
@@ -320,7 +316,7 @@ func TestDisconnect(t *testing.T) {
 
 	conn.Close()
 	// Make sure it had time to fully halt before contining
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 50)
 	log.Println("Connection closed")
 	// Get the current number of requests after the halt
 	numRequests := len(gp.Content)
@@ -328,7 +324,6 @@ func TestDisconnect(t *testing.T) {
 	// Continue Mock time passage, every 500ms
 	for timeMock.Now().Before(doneTime.Now()) {
 		timeMock.Add(time.Millisecond * 500)
-		time.Sleep(time.Millisecond * 10)
 	}
 
 	_, err = r.Recv()
