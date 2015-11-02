@@ -66,15 +66,23 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 	var halt = make(chan struct{})
 	var halted = false
 	var serverErr error
+
 	in, err := server.Recv()
 	if err != nil {
 		log.Printf("Error from scheduler: %v", err)
 	}
+	// Don't trust the user to give me what I want
+
 	if in.Command != "Run" {
 		// I will only accept the 'Run' command at this stage
 		err = server.Send(&executor.StatusMessage{Status: "Invalid"})
 		return err
 	}
+	if err = verifyCommand(in.ScriptParams); err != nil {
+		log.Printf("Invalid Command Given: %v", err)
+		return err
+	}
+
 	log.Printf("Received command: %v", in)
 	executorController := &Controller{Command: in.ScriptParams, Server: server, Clock: s.clock}
 
@@ -128,6 +136,7 @@ func listenForHalt(halt chan struct{}, halted *bool, serverErr *error, server ex
 		}
 	}
 }
+
 func CreateListenPort(port int) (net.Listener, error) {
 	listenPort := fmt.Sprintf(":%d", port)
 	lis, err := net.Listen("tcp", listenPort)
@@ -135,4 +144,33 @@ func CreateListenPort(port int) (net.Listener, error) {
 		return nil, err
 	}
 	return lis, nil
+}
+
+func verifyCommand(in *executor.ScriptParams) error {
+
+	// TODO find out the max goroutines the executor can handle
+	if in.MaxWorkers < 1 {
+		return fmt.Errorf("Max Workers must be greater than 0. Given MaxWorkers: %d", in.MaxWorkers)
+	}
+	if in.RunTime <= 1 {
+		return fmt.Errorf("You must run for greater than 1 second. Given Runtime: %d", in.RunTime)
+	}
+	if in.StartingRequestsPerSecond <= 10 {
+		return fmt.Errorf("Max Requests per seconds must be greater than 10. Given StartingRequestsPerSecond: %d", in.StartingRequestsPerSecond)
+	}
+	// TODO find out the max requests a second the executor can do
+	if in.MaxRequestsPerSecond < 1 {
+		return fmt.Errorf("Max Requests per seconds must be greater than 0. Given MaxRequestsPerSecond: %d", in.MaxRequestsPerSecond)
+	}
+	if in.MaxRequestsPerSecond < in.StartingRequestsPerSecond {
+		return fmt.Errorf("Max Requests per seconds must be greater than Starting Requests Per Second. Given MaxRequestsPerSecond: %d StartingRequestsPerSecond: %d",
+			in.MaxRequestsPerSecond, in.StartingRequestsPerSecond)
+	}
+	if in.GrowthFactor < 1 {
+		return fmt.Errorf("Growth Factor must be greater or equal to 1. Given GrowthFactor: %d", in.GrowthFactor)
+	}
+	if in.TimeBetweenGrowth < 0.1 {
+		return fmt.Errorf("Time Between Growth must be greater or equal to 0.1. Given TimeBetweenGrowth: %d", in.TimeBetweenGrowth)
+	}
+	return nil
 }

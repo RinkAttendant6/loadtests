@@ -56,10 +56,10 @@ func TestValidLoggingCode(t *testing.T) {
 		Url:                       server,
 		Script:                    goodLogScript,
 		RunTime:                   10,
-		MaxWorkers:                100,
+		MaxWorkers:                3,
 		GrowthFactor:              1.5,
 		TimeBetweenGrowth:         1,
-		StartingRequestsPerSecond: 10,
+		StartingRequestsPerSecond: 15,
 		MaxRequestsPerSecond:      1000,
 	}, defaultPort)
 	if err != nil {
@@ -67,14 +67,13 @@ func TestValidLoggingCode(t *testing.T) {
 	}
 
 	// Create the time when it should be done
-	doneTime := clock.NewMock()
-	doneTime.Add((10 * time.Second) + time.Second)
+	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
-	time.AfterFunc(time.Second*50, func() { panic("too long") })
+	time.AfterFunc(time.Second*10, func() { panic("too long") })
 
-	for timeMock.Now().Before(doneTime.Now()) {
-		timeMock.Add(time.Millisecond * 500)
-		time.Sleep(time.Millisecond * 10)
+	for timeMock.Now().Before(doneTime) {
+		timeMock.Add(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 1)
 	}
 
 	status, err := r.Recv()
@@ -122,10 +121,10 @@ func TestValidGetCode(t *testing.T) {
 		Url:                       srv.URL,
 		Script:                    script,
 		RunTime:                   10,
-		MaxWorkers:                100,
-		GrowthFactor:              1.5,
+		MaxWorkers:                3,
+		GrowthFactor:              float64(time.Millisecond),
 		TimeBetweenGrowth:         1,
-		StartingRequestsPerSecond: 10,
+		StartingRequestsPerSecond: 15,
 		MaxRequestsPerSecond:      1000,
 	}, defaultPort)
 	if err != nil {
@@ -133,16 +132,15 @@ func TestValidGetCode(t *testing.T) {
 	}
 
 	// Create the time when it should be done
-	doneTime := clock.NewMock()
-	doneTime.Add((10 * time.Second) + time.Second)
+	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
-	time.AfterFunc(time.Second*50, func() { panic("too long") })
+	time.AfterFunc(time.Second*10, func() { panic("too long") })
 
-	// Mock time passage,
-	for timeMock.Now().Before(doneTime.Now()) {
-		timeMock.Add(time.Millisecond * 500)
-		time.Sleep(time.Millisecond * 10)
+	// Mock time passage
+	for timeMock.Now().Before(doneTime) {
+		timeMock.Add(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 1)
 	}
 
 	status, err := r.Recv()
@@ -195,10 +193,10 @@ func TestHalt(t *testing.T) {
 		Url:                       srv.URL,
 		Script:                    script,
 		RunTime:                   10,
-		MaxWorkers:                100,
+		MaxWorkers:                3,
 		GrowthFactor:              1.5,
 		TimeBetweenGrowth:         1,
-		StartingRequestsPerSecond: 10,
+		StartingRequestsPerSecond: 15,
 		MaxRequestsPerSecond:      1000,
 	}, defaultPort)
 	if err != nil {
@@ -206,20 +204,18 @@ func TestHalt(t *testing.T) {
 	}
 
 	// I will cancel it after the time
-	haltTime := clock.NewMock()
-	haltTime.Add((3 * time.Second))
+	haltTime := timeMock.Now().Add((3 * time.Second))
 
 	// Create the time when it should be done
-	doneTime := clock.NewMock()
-	doneTime.Add((10 * time.Second) + time.Second)
+	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
-	time.AfterFunc(time.Second*50, func() { panic("too long") })
+	time.AfterFunc(time.Second*10, func() { panic("too long") })
 
-	// Mock time passage, every 500ms
-	for timeMock.Now().Before(haltTime.Now()) {
-		timeMock.Add(time.Millisecond * 500)
-		time.Sleep(time.Millisecond * 10)
+	// Mock time passage
+	for timeMock.Now().Before(haltTime) {
+		timeMock.Add(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 1)
 	}
 
 	r.Send(&exgrpc.CommandMessage{Command: "Halt"})
@@ -228,9 +224,10 @@ func TestHalt(t *testing.T) {
 	// Get the current number of requests after the halt
 	numRequests := len(gp.Content)
 
-	// Continue Mock time passage, every 500ms
-	for timeMock.Now().Before(doneTime.Now()) {
-		timeMock.Add(time.Millisecond * 500)
+	// Continue Mock time passage
+	for timeMock.Now().Before(doneTime) {
+		timeMock.Add(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 1)
 	}
 
 	status, err := r.Recv()
@@ -287,10 +284,10 @@ func TestDisconnect(t *testing.T) {
 		Url:                       srv.URL,
 		Script:                    script,
 		RunTime:                   10,
-		MaxWorkers:                100,
+		MaxWorkers:                3,
 		GrowthFactor:              1.5,
 		TimeBetweenGrowth:         1,
-		StartingRequestsPerSecond: 10,
+		StartingRequestsPerSecond: 15,
 		MaxRequestsPerSecond:      1000,
 	}, defaultPort)
 	if err != nil {
@@ -298,20 +295,17 @@ func TestDisconnect(t *testing.T) {
 	}
 
 	// I will disconnect after the time given
-	haltTime := clock.NewMock()
-	haltTime.Add((3 * time.Second))
+	haltTime := timeMock.Now().Add(3 * time.Second)
 
-	doneTime := clock.NewMock()
-	// It should be done after that time
-	doneTime.Add((10 * time.Second) + time.Second)
+	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
-	time.AfterFunc(time.Second*50, func() { panic("too long") })
+	time.AfterFunc(time.Second*10, func() { panic("too long") })
 
 	// Mock time passage
-	for timeMock.Now().Before(haltTime.Now()) {
-		timeMock.Add(time.Millisecond * 500)
-		time.Sleep(time.Millisecond * 10)
+	for timeMock.Now().Before(haltTime) {
+		timeMock.Add(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 1)
 	}
 
 	conn.Close()
@@ -321,9 +315,10 @@ func TestDisconnect(t *testing.T) {
 	// Get the current number of requests after the halt
 	numRequests := len(gp.Content)
 
-	// Continue Mock time passage, every 500ms
-	for timeMock.Now().Before(doneTime.Now()) {
-		timeMock.Add(time.Millisecond * 500)
+	// Continue Mock time passage
+	for timeMock.Now().Before(doneTime) {
+		timeMock.Add(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 1)
 	}
 
 	_, err = r.Recv()
@@ -360,10 +355,10 @@ func TestInvalidCode(t *testing.T) {
 		Url:                       server,
 		Script:                    badScript,
 		RunTime:                   2,
-		MaxWorkers:                100,
+		MaxWorkers:                3,
 		GrowthFactor:              1.5,
 		TimeBetweenGrowth:         1,
-		StartingRequestsPerSecond: 10,
+		StartingRequestsPerSecond: 15,
 		MaxRequestsPerSecond:      1000,
 	}, defaultPort)
 	// Validate responses
