@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/digitalocean/go-metadata"
 	"github.com/digitalocean/godo"
 	"github.com/ianschenck/envflag"
 	"github.com/lgpeterson/loadtests/scheduler"
@@ -57,17 +58,23 @@ func main() {
 	envflag.Parse()
 	flag.Parse()
 
-	addr := startExecutorBinaryFileserver(*executorBinaryFilepath)
+	md, err := metadata.NewClient().Metadata()
+	if err != nil {
+		logrus.WithError(err).Fatal("can't reach DO metadata service")
+	}
+	iface := md.Interfaces["public"][0].IPv4.IPAddress
+
+	addr := startExecutorBinaryFileserver(iface, *executorBinaryFilepath)
 	cloud, sshKeys := connectToDO(*token)
 
-	svcl, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	svcl, err := net.Listen("tcp", fmt.Sprintf("%s:%d", iface, *port))
 	if err != nil {
 		logrus.WithError(err).Fatal("can't provide listener for scheduler service")
 	}
 	defer svcl.Close()
 
 	cfg := &scheduler.Config{
-		PullExecutorBinaryURL: addr,
+		PullExecutorBinaryURL: fmt.Sprintf("http://%s", addr.String()),
 		AdvertiseListenAddr:   svcl.Addr().String(),
 		SSHKeyIDs:             sshKeys,
 
@@ -93,18 +100,20 @@ func main() {
 	svc := scheduler.NewServer(cfg, db)
 	srv := grpc.NewServer()
 	pb.RegisterSchedulerServer(srv, svc)
+
+	logrus.WithField("addr", svcl.Addr().String()).Info("scheduler RPC listening")
 	if err := srv.Serve(svcl); err != nil {
 		logrus.WithError(err).Fatal("can't service requests")
 	}
 }
 
-func startExecutorBinaryFileserver(filepath string) string {
+func startExecutorBinaryFileserver(iface, filepath string) *net.TCPAddr {
 	_, err := os.Stat(filepath)
 	if err != nil {
 		logrus.WithError(err).WithField("path", filepath).Fatal("can't serve given path as an executor binary file")
 	}
 
-	l, err := net.Listen("tcp", ":0")
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", iface))
 	if err != nil {
 		logrus.WithError(err).Fatal("can't provide listener for executor binary server")
 	}
@@ -113,11 +122,13 @@ func startExecutorBinaryFileserver(filepath string) string {
 		srv := http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.ServeFile(w, r, filepath)
 		})}
+		logrus.WithField("addr", l.Addr().String()).Info("executor binary provider listening")
 		if err := srv.Serve(l); err != nil {
 			logrus.WithError(err).Panic("can't serve executor binaries")
 		}
 	}()
-	return l.Addr().String()
+
+	return l.Addr().(*net.TCPAddr)
 }
 
 func connectToDO(token string) (*godo.Client, []godo.DropletCreateSSHKey) {

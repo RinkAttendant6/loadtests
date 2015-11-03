@@ -27,17 +27,17 @@ func testServer(ip string) {
     get("http://45.55.176.206")
 end
 `
-	msg, err := sendTestMesage(&exgrpc.CommandMessage{
-		Url:                       defaultUrl,
+	scriptParam := &exgrpc.ScriptParams{Url: defaultUrl,
 		Script:                    script,
-		ScriptName:                "test",
+		ScriptId:                  "1234",
 		RunTime:                   10,
 		MaxWorkers:                100,
 		GrowthFactor:              1.5,
 		TimeBetweenGrowth:         1,
 		StartingRequestsPerSecond: 10,
 		MaxRequestsPerSecond:      1000,
-	}, ip)
+	}
+	msg, err := sendTestMesage(&exgrpc.CommandMessage{Command: "Run", ScriptParams: scriptParam}, ip)
 	// Validate responses
 	if err != nil {
 		log.Fatalf("Error in contacting server: %v", err)
@@ -57,5 +57,13 @@ func sendTestMesage(message *exgrpc.CommandMessage, ip string) (*exgrpc.StatusMe
 	defer conn.Close()
 	c := exgrpc.NewCommanderClient(conn)
 
-	return c.ExecuteCommand(context.Background(), message)
+	client, err := c.ExecuteCommand(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if err = client.Send(message); err != nil {
+		return nil, err
+	}
+	mes, err := client.Recv()
+	return mes, err
 }

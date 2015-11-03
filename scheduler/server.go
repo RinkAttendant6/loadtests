@@ -53,7 +53,6 @@ func (s *Server) RegisterExecutor(ctx context.Context, req *pb.RegisterExecutorR
 		InfluxDb:       s.cfg.InfluxDBName,
 		InfluxSsl:      s.cfg.InfluxSSL,
 	}
-
 	err := s.db.RegisterExecutorUp(int(req.DropletId), int(req.Port))
 	return resp, err
 }
@@ -66,18 +65,20 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		float64(req.MaxRequestsPerSecond) / float64(s.cfg.MaxExecPSPerExecutor),
 	))
 
+	if err := s.answerPreparing(srv, needExecutors); err != nil {
+		return err
+	}
+
 	executors, err := s.db.LaunchExecutors(ctx, needExecutors)
 	if err != nil {
 		return err
 	}
 	defer func() {
+		logrus.Info("killing all executors")
 		if err := executors.killall(); err != nil {
 			logrus.WithError(err).Error("couldn't kill all executors!")
 		}
 	}()
-	if s.answerPreparing(srv, needExecutors); err != nil {
-		return err
-	}
 
 	beginCtx, timeout := context.WithTimeout(ctx, s.cfg.MaxWaitExecutorOnline)
 	defer timeout()

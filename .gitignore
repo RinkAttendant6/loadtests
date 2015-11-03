@@ -1,3 +1,7 @@
 .vagrant/
 *.bkp
 *.tar
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/files/scheduler/executord
+terraform/files/scheduler/schedulerd

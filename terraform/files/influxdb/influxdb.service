@@ -1,4 +1,4 @@
-Unit]
+[Unit]
 Description=InfluxDB is an open-source, distributed, time series database
 Documentation=https://influxdb.com/docs/
 After=network.target
