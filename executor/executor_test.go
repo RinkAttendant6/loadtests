@@ -365,6 +365,10 @@ func TestInvalidCode(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error connecting to server: %v", err)
 	} else {
+		mes, err := response.Recv()
+		if mes.Status != "Invalid: compiling program: syntax error" {
+			t.Errorf("Status was not invalid, given one was: %s", mes.Status)
+		}
 		_, err = response.Recv()
 		if err == nil {
 			t.Errorf("No error from server")
