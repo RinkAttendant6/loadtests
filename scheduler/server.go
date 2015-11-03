@@ -96,6 +96,7 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		req.MaxRequestsPerSecond,
 	)
 	if err != nil {
+		logrus.WithError(err).Error("sending command")
 		s.answerErrored(srv, err)
 		return nil
 	}
@@ -114,13 +115,16 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 
 	select {
 	case err := <-completion:
+
 		if err != nil {
-			s.answerErrored(srv, ctx.Err())
+			logrus.WithError(err).Error("waiting for completeion")
+			s.answerErrored(srv, err)
 		} else {
 			s.answerFinished(srv)
 		}
 	case <-ctx.Done():
 	case <-time.After(maxRuntime):
+		logrus.WithError(err).Error("timing out execution")
 		s.answerErrored(srv, fmt.Errorf("forcing destruction of executors, max runtime elapsed: %v", maxRuntime))
 	}
 

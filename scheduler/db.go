@@ -289,6 +289,7 @@ func (e *executors) executeCommand(
 		if exec.cmdClient == nil {
 			cmdCLient, err := exec.client.ExecuteCommand(ctx)
 			if err != nil {
+				ll.WithError(err).Error("failed to prepare command executor client")
 				return err
 			}
 			exec.cmdClient = cmdCLient
@@ -315,7 +316,11 @@ func (e *executors) executeCommand(
 		})
 
 		ll.Info("sending commands to executor")
-		return exec.cmdClient.Send(in)
+		err := exec.cmdClient.Send(in)
+		if err != nil {
+			ll.WithError(err).Error("couldn't send RUN command")
+		}
+		return err
 	})
 }
 
@@ -331,7 +336,11 @@ func (e *executors) haltCommand(parent context.Context) error {
 
 		in := &pb.CommandMessage{Command: "Halt"}
 		ll.Info("sending commands to executor")
-		return exec.cmdClient.Send(in)
+		err := exec.cmdClient.Send(in)
+		if err != nil {
+			ll.WithError(err).Error("couldn't send halt command")
+		}
+		return err
 	})
 }
 
@@ -346,10 +355,11 @@ func (e *executors) waitCompletion(parent context.Context) error {
 		}
 		res, err := exec.cmdClient.Recv()
 		if err != nil {
-			return err
+			ll.WithError(err).Error("couldn't wait to receive status")
+		} else {
+			ll.WithField("status", res.Status).Info("execution completed")
 		}
-		ll.WithField("status", res.Status).Info("execution completed")
-		return nil
+		return err
 	})
 }
 

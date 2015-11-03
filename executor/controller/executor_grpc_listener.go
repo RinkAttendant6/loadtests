@@ -92,6 +92,7 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 
 	if err != nil {
 		log.Printf("Error executing: %v", err)
+		_ = server.Send(&executor.StatusMessage{Status: "Invalid: " + err.Error()})
 		return err
 	} else if serverErr != nil {
 		// If the recv wait gave an error I want to return it, if possible
