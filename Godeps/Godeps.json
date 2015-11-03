@@ -19,6 +19,15 @@
 			"Rev": "ae77645379a07929edeef20b47ba761ecfe5fde8"
 		},
 		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-159-gcffab77",
+			"Rev": "cffab77ecb4f963ced9e30344eb2b9282ef36887"
+		},
+		{
+			"ImportPath": "github.com/dgryski/go-skip32",
+			"Rev": "bc598011ee1986c163c749f04d3ea7bc471b8e69"
+		},
+		{
 			"ImportPath": "github.com/digitalocean/go-metadata",
 			"Rev": "049f8ff034c9124870a23ee1a4d22829881674ec"
 		},
@@ -26,6 +35,15 @@
 			"ImportPath": "github.com/digitalocean/godo",
 			"Comment": "v0.9.0-2-gc03bb09",
 			"Rev": "c03bb099b8dc38e87581902a56885013a0865703"
+		},
+		{
+			"ImportPath": "github.com/dustin/go-humanize",
+			"Rev": "c20a8bde38c8f5ba06f6600edf473705c96829d1"
+		},
+		{
+			"ImportPath": "github.com/flynn/flynn/controller/name",
+			"Comment": "v20151020.0-7-g99eed31",
+			"Rev": "99eed31fb3d239d6eb9c11de94b9b8c9097bb45f"
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
