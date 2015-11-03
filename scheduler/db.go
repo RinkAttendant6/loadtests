@@ -209,6 +209,9 @@ type executor struct {
 	ip      string
 	port    int
 	client  pb.CommanderClient
+
+	// set when there's an ongoing command execution
+	cmdClient pb.Commander_ExecuteCommandClient
 }
 
 func (e *executor) waitTilAlive(ctx context.Context) error {
@@ -264,7 +267,7 @@ func (e *executors) executeCommand(
 	parent context.Context,
 	url string,
 	script string,
-	scriptName string,
+	scriptID string,
 	runtime int32,
 	maxWorkers int32,
 	growthFactor float64,
@@ -283,32 +286,69 @@ func (e *executors) executeCommand(
 		}
 		ll.Info("executor is alive")
 
+		if exec.cmdClient == nil {
+			cmdCLient, err := exec.client.ExecuteCommand(ctx)
+			if err != nil {
+				return err
+			}
+			exec.cmdClient = cmdCLient
+		}
+
 		in := &pb.CommandMessage{
-			Url:                       url,
-			Script:                    script,
-			ScriptName:                scriptName,
-			RunTime:                   runtime,
-			MaxWorkers:                maxWorkers / int32(len(e.executors)),
-			GrowthFactor:              growthFactor,
-			TimeBetweenGrowth:         timeBetweenGrowth,
-			StartingRequestsPerSecond: startingRPS / int32(len(e.executors)),
-			MaxRequestsPerSecond:      maxRPS / int32(len(e.executors)),
+			Command: "Run",
+			ScriptParams: &pb.ScriptParams{
+				Url:                       url,
+				Script:                    script,
+				ScriptId:                  scriptID,
+				RunTime:                   runtime,
+				MaxWorkers:                maxWorkers / int32(len(e.executors)),
+				GrowthFactor:              growthFactor,
+				TimeBetweenGrowth:         timeBetweenGrowth,
+				StartingRequestsPerSecond: startingRPS / int32(len(e.executors)),
+				MaxRequestsPerSecond:      maxRPS / int32(len(e.executors)),
+			},
 		}
 		ll = ll.WithFields(logrus.Fields{
-			"worker.count": in.MaxWorkers,
-			"max.rps":      in.MaxRequestsPerSecond,
-			"start.rps":    in.StartingRequestsPerSecond,
+			"worker.count": in.GetScriptParams().MaxWorkers,
+			"max.rps":      in.GetScriptParams().MaxRequestsPerSecond,
+			"start.rps":    in.GetScriptParams().StartingRequestsPerSecond,
 		})
 
 		ll.Info("sending commands to executor")
-		res, err := exec.client.ExecuteCommand(ctx, in)
+		return exec.cmdClient.Send(in)
+	})
+}
+
+func (e *executors) haltCommand(parent context.Context) error {
+	return e.each(parent, func(ctx context.Context, exec *executor) error {
+		ll := logrus.WithFields(logrus.Fields{
+			"droplet.id": exec.droplet.ID,
+			"port":       exec.port,
+		})
+		if exec.cmdClient == nil {
+			return fmt.Errorf("nothing to halt")
+		}
+
+		in := &pb.CommandMessage{Command: "Halt"}
+		ll.Info("sending commands to executor")
+		return exec.cmdClient.Send(in)
+	})
+}
+
+func (e *executors) waitCompletion(parent context.Context) error {
+	return e.each(parent, func(ctx context.Context, exec *executor) error {
+		ll := logrus.WithFields(logrus.Fields{
+			"droplet.id": exec.droplet.ID,
+			"port":       exec.port,
+		})
+		if exec.cmdClient == nil {
+			return fmt.Errorf("no execution running")
+		}
+		res, err := exec.cmdClient.Recv()
 		if err != nil {
 			return err
 		}
-		ll.WithField("status", res.Status).Info("command sent")
-		if res.Status != "OK" {
-			return fmt.Errorf("executor %v is not OK: %v", exec.droplet.ID, res.Status)
-		}
+		ll.WithField("status", res.Status).Info("execution completed")
 		return nil
 	})
 }

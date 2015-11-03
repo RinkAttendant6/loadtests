@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"github.com/benbjohnson/clock"
 	"github.com/digitalocean/godo"
 	"math"
@@ -99,11 +100,28 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		return nil
 	}
 	s.answerStarted(srv)
+
+	completion := make(chan error, 1)
+	go func() {
+		defer close(completion)
+		if err := executors.waitCompletion(ctx); err != nil {
+			completion <- err
+		}
+	}()
+
+	// maxRuntime is 125% of announced runtime
+	maxRuntime := ((time.Second * time.Duration(req.RunTime) * 125) / 100)
+
 	select {
+	case err := <-completion:
+		if err != nil {
+			s.answerErrored(srv, ctx.Err())
+		} else {
+			s.answerFinished(srv)
+		}
 	case <-ctx.Done():
-		s.answerErrored(srv, ctx.Err())
-	case <-time.After(time.Second * time.Duration(req.RunTime)):
-		s.answerFinished(srv)
+	case <-time.After(maxRuntime):
+		s.answerErrored(srv, fmt.Errorf("forcing destruction of executors, max runtime elapsed: %v", maxRuntime))
 	}
 
 	return nil
