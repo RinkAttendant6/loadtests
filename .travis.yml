@@ -9,6 +9,6 @@ install:
   - go get github.com/tools/godep
   - godep restore
 
-script: 
-  - go test -tags unit_test_executor ./executor
-  - go test -tags unit_test_lua_engine ./executor/engine
+script:
+  - go install ./...
+  - go test ./...
