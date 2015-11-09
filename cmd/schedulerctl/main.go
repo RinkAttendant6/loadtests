@@ -36,11 +36,11 @@ var (
 	scriptFileFlag    = cli.StringFlag{Name: "script.file", Usage: "if specified, the file where the source of the script can be found. Otherwise uses stdin"}
 	runTimeFlag       = cli.DurationFlag{Name: "duration", Value: time.Minute, Usage: "how long to perform the load test for"}
 	maxExecPerSecFlag = cli.IntFlag{Name: "max.exec.ps", Value: 100, Usage: "number of executions per second"}
-	maxWorkersFlag    = cli.IntFlag{Name: "max.workers", Value: 1000, Usage: "number of execution threads"}
+	maxWorkersFlag    = cli.IntFlag{Name: "max.workers", Value: 100, Usage: "number of execution threads"}
 
-	growthFactorFlag              = cli.Float64Flag{Name: "extra.growth.factor", Value: 1}
-	timeBetweenGrowthFlag         = cli.DurationFlag{Name: "extra.time.between.growth", Value: 1}
-	startingRequestsPerSecondFlag = cli.IntFlag{Name: "extra.starting.requests.ps", Value: 1}
+	growthFactorFlag              = cli.Float64Flag{Name: "extra.growth.factor", Value: 1.5}
+	timeBetweenGrowthFlag         = cli.DurationFlag{Name: "extra.time.between.growth", Value: time.Second}
+	startingRequestsPerSecondFlag = cli.IntFlag{Name: "extra.starting.requests.ps", Value: 50}
 )
 
 func main() {

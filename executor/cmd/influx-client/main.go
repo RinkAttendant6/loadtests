@@ -21,7 +21,7 @@ func main() {
 
 func testIflux(ip string) {
 	metrics := controller.NewMetricsGatherer()
-	metrics.IncrHTTPGet("http://localhost/foo", 99, time.Millisecond)
+	metrics.IncrHTTPGet("http://localhost/foo", 200, time.Millisecond/10)
 
 	pass := os.Getenv("INFLUX_PWD")
 	user := os.Getenv("INFLUX_USER")

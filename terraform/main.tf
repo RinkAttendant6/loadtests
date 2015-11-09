@@ -38,6 +38,8 @@ resource "digitalocean_droplet" "influxdb" {
             "sudo mv /tmp/influxdb.service /etc/systemd/system/influxdb.service",
             "sudo systemctl enable influxdb.service",
             "sudo systemctl start influxdb.service",
+            "while netstat -lnt | awk '$4 ~ /:8086$/ {exit 1}'; do sleep 10; done",
+            "curl --retry 50 -G http://localhost:8086/query --data-urlencode \"u=${var.influx_username}\" --data-urlencode \"p=${var.influx_password}\" --data-urlencode \"q=CREATE DATABASE ${var.influx_dbname}\"",
         ]
     }
 }

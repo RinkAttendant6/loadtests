@@ -34,7 +34,7 @@ end
 		MaxWorkers:                100,
 		GrowthFactor:              1.5,
 		TimeBetweenGrowth:         1,
-		StartingRequestsPerSecond: 10,
+		StartingRequestsPerSecond: 15,
 		MaxRequestsPerSecond:      1000,
 	}
 	msg, err := sendTestMesage(&exgrpc.CommandMessage{Command: "Run", ScriptParams: scriptParam}, ip)

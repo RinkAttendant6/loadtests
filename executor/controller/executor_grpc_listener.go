@@ -80,6 +80,7 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 	}
 	if err = verifyCommand(in.ScriptParams); err != nil {
 		log.Printf("Invalid Command Given: %v", err)
+		_ = server.Send(&executor.StatusMessage{Status: "Invalid: " + err.Error()})
 		return err
 	}
 

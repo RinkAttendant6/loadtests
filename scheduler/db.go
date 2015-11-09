@@ -195,8 +195,7 @@ func (db *DB) RegisterExecutorUp(dropletID int, port int) error {
 	wait, ok := db.waitDroplets[dropletID]
 	if !ok {
 		ll.Warn("unexpected executor attempted to join")
-		// _, err := db.cloud.Droplets.Delete(dropletID)
-		var err error
+		_, err := db.cloud.Droplets.Delete(dropletID)
 		return fmt.Errorf("unexpected droplet %d registered, delete request sent: %v", dropletID, err)
 	}
 	wait <- port
@@ -310,9 +309,7 @@ func (e *executors) executeCommand(
 			},
 		}
 		ll = ll.WithFields(logrus.Fields{
-			"worker.count": in.GetScriptParams().MaxWorkers,
-			"max.rps":      in.GetScriptParams().MaxRequestsPerSecond,
-			"start.rps":    in.GetScriptParams().StartingRequestsPerSecond,
+			"script_params": in.GetScriptParams(),
 		})
 
 		ll.Info("sending commands to executor")
@@ -364,8 +361,9 @@ func (e *executors) waitCompletion(parent context.Context) error {
 }
 
 func (e *executors) each(parent context.Context, fn func(ctx context.Context, exec *executor) error) error {
-	ctx, cancel := context.WithCancel(parent)
-	defer cancel()
+	ctx := parent
+	//ctx, cancel := context.WithCancel(parent)
+	//defer cancel()
 	var wg sync.WaitGroup
 	errc := make(chan error, len(e.executors))
 	logrus.WithField("count", len(e.executors)).Debug("launching parallel requests")

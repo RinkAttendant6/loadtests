@@ -38,7 +38,7 @@ func main() {
 		influxUsername = flag.String("influx.username", "", "username to use when connecting to influx DB")
 		influxPassword = flag.String("influx.password", "", "password to authenticate with influx DB")
 		influxDBName   = flag.String("influx.db.name", "", "name of the influx DB to which metrics are sent")
-		influxSSL      = flag.Bool("influx.use.ssl", true, "whether to use SSL when talking to influx DB")
+		influxSSL      = flag.Bool("influx.use.ssl", false, "whether to use SSL when talking to influx DB")
 	)
 	envflag.StringVar(executorBinaryFilepath, "EXECUTOR_BINARY_FILEPATH", "", "")
 	envflag.IntVar(port, "PORT", 0, "")
