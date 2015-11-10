@@ -362,8 +362,6 @@ func (e *executors) waitCompletion(parent context.Context) error {
 
 func (e *executors) each(parent context.Context, fn func(ctx context.Context, exec *executor) error) error {
 	ctx := parent
-	//ctx, cancel := context.WithCancel(parent)
-	//defer cancel()
 	var wg sync.WaitGroup
 	errc := make(chan error, len(e.executors))
 	logrus.WithField("count", len(e.executors)).Debug("launching parallel requests")

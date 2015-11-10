@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -59,8 +60,6 @@ func (s *Server) RegisterExecutor(ctx context.Context, req *pb.RegisterExecutorR
 
 func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) error {
 	ctx := srv.Context()
-	//	ctx, cancel := context.WithCancel(srv.Context())
-	//defer cancel()
 
 	needExecutors := int(math.Ceil(
 		float64(req.MaxRequestsPerSecond) / float64(s.cfg.MaxExecPSPerExecutor),
@@ -81,8 +80,6 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		}
 	}()
 
-	//beginCtx, timeout := context.WithTimeout(ctx, s.cfg.MaxWaitExecutorOnline)
-	//defer timeout()
 	err = executors.executeCommand(
 		ctx,
 		req.Url,
@@ -110,9 +107,6 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		}
 	}()
 
-	// maxRuntime is 125% of announced runtime
-	//maxRuntime := ((time.Second * time.Duration(req.RunTime) * 125) / 100)
-
 	select {
 	case err := <-completion:
 
@@ -122,12 +116,9 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		} else {
 			s.answerFinished(srv)
 		}
-		/*
-			case <-ctx.Done():
-			case <-time.After(maxRuntime):
-				logrus.WithError(err).Error("timing out execution")
-				s.answerErrored(srv, fmt.Errorf("forcing destruction of executors, max runtime elapsed: %v", maxRuntime))
-		*/
+	case <-ctx.Done():
+		logrus.WithError(err).Error("timing out execution")
+		s.answerErrored(srv, fmt.Errorf("forcing destruction of executors"))
 	}
 
 	return nil
