@@ -27,7 +27,13 @@ func (w *worker) execute() {
 			return
 		case <-w.JobChannel:
 			scriptReader := strings.NewReader(w.Command.Script)
-			metrics := NewMetricsGatherer()
+			metrics, err := NewMetricsGatherer()
+			if err != nil {
+				// This should not happen, because there are no parameters to NewMetricsGatherer
+				// But I should log it for testing/debugging purposes
+				log.Printf("Error creating metrics gatherer: %v", err)
+				return
+			}
 			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(metrics))
 			if err != nil {
 				// This should not be because the script did not compile, if it

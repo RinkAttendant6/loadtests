@@ -1,27 +1,31 @@
 {
 	"ImportPath": "github.com/lgpeterson/loadtests",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.5",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/Shopify/go-lua",
-			"Rev": "57b00c4ca3008775fe575a5aa94e4b828fc907de"
+			"Rev": "01100eb78d65b313b80db5900310e6a4d2a06844"
 		},
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
-			"Comment": "v0.8.7-30-g4643a7e",
-			"Rev": "4643a7efec9b8fd7548882e7b30095711343100f"
+			"Comment": "v0.8.7-28-gdf78bc7",
+			"Rev": "df78bc75a33fd9b582230e052be33dff861f3a4a"
 		},
 		{
 			"ImportPath": "github.com/benbjohnson/clock",
-			"Rev": "ae77645379a07929edeef20b47ba761ecfe5fde8"
+			"Rev": "7f9bbfdd12eedf848e765d1b50628588caec4266"
+		},
+		{
+			"ImportPath": "github.com/bradfitz/http2",
+			"Rev": "f8202bc903bda493ebba4aa54922d78430c2c42f"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-159-gcffab77",
-			"Rev": "cffab77ecb4f963ced9e30344eb2b9282ef36887"
+			"Comment": "1.2.0-163-g70e3fa5",
+			"Rev": "70e3fa51ebed95df8c0fbe1519c1c1f9bc16bb13"
 		},
 		{
 			"ImportPath": "github.com/dgryski/go-skip32",
@@ -33,8 +37,8 @@
 		},
 		{
 			"ImportPath": "github.com/digitalocean/godo",
-			"Comment": "v0.9.0-2-gc03bb09",
-			"Rev": "c03bb099b8dc38e87581902a56885013a0865703"
+			"Comment": "v0.9.0-4-g232fd15",
+			"Rev": "232fd15c3818d84cedd0dfbd8e183ef76d38edbc"
 		},
 		{
 			"ImportPath": "github.com/dustin/go-humanize",
@@ -42,16 +46,16 @@
 		},
 		{
 			"ImportPath": "github.com/flynn/flynn/controller/name",
-			"Comment": "v20151020.0-7-g99eed31",
-			"Rev": "99eed31fb3d239d6eb9c11de94b9b8c9097bb45f"
+			"Comment": "v20151104.1-2-g4eac3c5",
+			"Rev": "4eac3c5628a621ca2657f7013d941f08d3b66831"
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "9ebc6c4ed925b1323a0b11cea09e527cdc4e557c"
+			"Rev": "8df8a93c670173cd1d8737a507a253b94f2d0b5a"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
-			"Rev": "547ef5ac979778feb2f760cdb5f4eae1a2207b86"
+			"Rev": "2a60fc2ba6c19de80291203597d752e9ba58e4c0"
 		},
 		{
 			"ImportPath": "github.com/ianschenck/envflag",
@@ -59,18 +63,18 @@
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/models",
-			"Comment": "v0.9.4-rc1-696-gddca29a",
-			"Rev": "ddca29a87b6eefa4730200d3da109a9f2d7150d4"
+			"Comment": "v0.9.4-rc1-906-g8ec4d04",
+			"Rev": "8ec4d04c7150bef78332a9a6dd2a68daf903fa99"
 		},
 		{
 			"ImportPath": "github.com/influxdb/influxdb/pkg/escape",
-			"Comment": "v0.9.4-rc1-696-gddca29a",
-			"Rev": "ddca29a87b6eefa4730200d3da109a9f2d7150d4"
+			"Comment": "v0.9.4-rc1-906-g8ec4d04",
+			"Rev": "8ec4d04c7150bef78332a9a6dd2a68daf903fa99"
 		},
 		{
 			"ImportPath": "github.com/lgpeterson/influxdb/client",
-			"Comment": "v0.9.4-rc1-129-gdb46649",
-			"Rev": "db46649442b844e3752b6948064c16759755c543"
+			"Comment": "v0.9.4-rc1-850-g82db78c",
+			"Rev": "82db78cfa9ee12950d93d00993a0aeaa17c860f8"
 		},
 		{
 			"ImportPath": "github.com/tent/http-link-go",
@@ -78,27 +82,23 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "42ad50856d0131521b13983610e75c16da945ae3"
-		},
-		{
-			"ImportPath": "golang.org/x/net/http2",
-			"Rev": "42ad50856d0131521b13983610e75c16da945ae3"
+			"Rev": "b4e17d61b15679caf2335da776c614169a1b4643"
 		},
 		{
 			"ImportPath": "golang.org/x/net/internal/timeseries",
-			"Rev": "42ad50856d0131521b13983610e75c16da945ae3"
+			"Rev": "b4e17d61b15679caf2335da776c614169a1b4643"
 		},
 		{
 			"ImportPath": "golang.org/x/net/trace",
-			"Rev": "42ad50856d0131521b13983610e75c16da945ae3"
+			"Rev": "b4e17d61b15679caf2335da776c614169a1b4643"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "c30abeebd1a0c41f6e0d9ad6d26fd9daf8aff7d6"
+			"Rev": "038cb4adce85ed41e285c2e7cc6221a92bfa44aa"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
-			"Rev": "e07e93b00ed45b5e9fcc4a42ced33c4ad0acf4be"
+			"Rev": "3255a5521cec5027cdd8acdefb1ac7a130ac6e2b"
 		}
 	]
 }

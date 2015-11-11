@@ -20,14 +20,17 @@ func main() {
 }
 
 func testIflux(ip string) {
-	metrics := controller.NewMetricsGatherer()
+	metrics, err := controller.NewMetricsGatherer()
+	if err != nil {
+		log.Fatalf("Error creating influx persistor: %v", err)
+	}
 	metrics.IncrHTTPGet("http://localhost/foo", 200, time.Millisecond/10)
 
 	pass := os.Getenv("INFLUX_PWD")
 	user := os.Getenv("INFLUX_USER")
 
 	persister := &persister.InfluxPersister{}
-	err := persister.SetupPersister(ip, user, pass, "ltm_metrics", true)
+	err = persister.SetupPersister(ip, user, pass, "ltm_metrics", true)
 	if err != nil {
 		log.Fatalf("Error creating influx persistor: %v", err)
 	}

@@ -15,8 +15,6 @@ It has these top-level messages:
 package grpc_health_v1alpha
 
 import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
 
 import (
 	context "golang.org/x/net/context"
@@ -25,8 +23,6 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
 
 type HealthCheckResponse_ServingStatus int32
 
@@ -75,58 +71,58 @@ func init() {
 var _ context.Context
 var _ grpc.ClientConn
 
-// Client API for Health service
+// Client API for HealthCheck service
 
-type HealthClient interface {
+type HealthCheckClient interface {
 	Check(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 }
 
-type healthClient struct {
+type healthCheckClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewHealthClient(cc *grpc.ClientConn) HealthClient {
-	return &healthClient{cc}
+func NewHealthCheckClient(cc *grpc.ClientConn) HealthCheckClient {
+	return &healthCheckClient{cc}
 }
 
-func (c *healthClient) Check(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
+func (c *healthCheckClient) Check(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
 	out := new(HealthCheckResponse)
-	err := grpc.Invoke(ctx, "/grpc.health.v1alpha.Health/Check", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/grpc.health.v1alpha.HealthCheck/Check", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Health service
+// Server API for HealthCheck service
 
-type HealthServer interface {
+type HealthCheckServer interface {
 	Check(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
 }
 
-func RegisterHealthServer(s *grpc.Server, srv HealthServer) {
-	s.RegisterService(&_Health_serviceDesc, srv)
+func RegisterHealthCheckServer(s *grpc.Server, srv HealthCheckServer) {
+	s.RegisterService(&_HealthCheck_serviceDesc, srv)
 }
 
-func _Health_Check_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _HealthCheck_Check_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(HealthCheckRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(HealthServer).Check(ctx, in)
+	out, err := srv.(HealthCheckServer).Check(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-var _Health_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "grpc.health.v1alpha.Health",
-	HandlerType: (*HealthServer)(nil),
+var _HealthCheck_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "grpc.health.v1alpha.HealthCheck",
+	HandlerType: (*HealthCheckServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Check",
-			Handler:    _Health_Check_Handler,
+			Handler:    _HealthCheck_Check_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

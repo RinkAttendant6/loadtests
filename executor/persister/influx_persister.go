@@ -1,40 +1,38 @@
 package persister
 
 import (
-	"crypto/tls"
 	"fmt"
 	"log"
-	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
-	"github.com/lgpeterson/influxdb/client"
+	client "github.com/influxdb/influxdb/client/v2"
 	"github.com/lgpeterson/loadtests/executor/controller"
 )
 
 // InfluxPersister is a persister that will save the output to a file
 type InfluxPersister struct {
-	client   *client.Client
+	client   client.Client
 	database string
 }
 
 // NewInfluxPersister creates a new influx perisistor with the influx IP
 func (f *InfluxPersister) SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error {
-	url, err := client.ParseConnectionString(influxIP, useSsl)
+	influxUrl := parseUrl(influxIP, useSsl)
+	url, err := url.Parse(influxUrl)
 	if err != nil {
 		return err
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	config := client.Config{
+		Username:           user,
+		Password:           pass,
+		URL:                url,
+		InsecureSkipVerify: useSsl,
 	}
-	httpClient := &http.Client{Transport: tr}
-	config := client.NewConfig()
-	config.Username = user
-	config.Password = pass
-	config.URL = url
-	config.HttpClient = httpClient
 
-	c, err := client.NewClient(config)
+	c := client.NewClient(config)
 
 	f.database = database
 	f.client = c
@@ -43,7 +41,7 @@ func (f *InfluxPersister) SetupPersister(influxIP string, user string, pass stri
 }
 
 func (f *InfluxPersister) CountOccurrences(testID string, tableName string) (int, error) {
-	cmd := fmt.Sprintf("select count(id) from %s where id=%q", tableName, testID)
+	cmd := fmt.Sprintf("select count(id) from %s where id='%s'", tableName, testID)
 	query := client.Query{
 		Command:  cmd,
 		Database: f.database,
@@ -58,8 +56,7 @@ func (f *InfluxPersister) CountOccurrences(testID string, tableName string) (int
 	if len(res) == 0 {
 		return 0, fmt.Errorf("no rows found")
 	}
-	stringCount := fmt.Sprintf("%v", res[0])
-	log.Printf("Returned string was: %s", res[0].Series[0].Values[0][1])
+	stringCount := fmt.Sprintf("%v", res[0].Series[0].Values[0][1])
 	count, err := strconv.ParseInt(stringCount, 10, 0)
 	if err != nil {
 		return 0, fmt.Errorf("what I got back was not an int: %v", err)
@@ -80,20 +77,47 @@ func (f *InfluxPersister) DropData(tableName string) error {
 
 // Persist saves the data to a file with public permissions
 func (f *InfluxPersister) Persist(scriptId string, metrics *controller.MetricsGatherer) error {
-	addId(metrics, scriptId)
-	bps := client.BatchPoints{
-		Points:          metrics.Points,
+	bps, err := f.addId(metrics, scriptId)
+	if err != nil {
+		return err
+	}
+	log.Printf("%v", bps.Points())
+	err = f.client.Write(bps)
+	return err
+}
+func (f *InfluxPersister) addId(metrics *controller.MetricsGatherer, scriptId string) (client.BatchPoints, error) {
+	conf := client.BatchPointsConfig{
 		Database:        f.database,
 		RetentionPolicy: "default",
 	}
-	_, err := f.client.Write(bps)
-	return err
+	bps, err := client.NewBatchPoints(conf)
+	if err != nil {
+		return nil, err
+	}
+	for _, point := range metrics.BatchPoints.Points() {
+		cols := point.Fields()
+		cols["id"] = scriptId
+		newPoint, err := client.NewPoint(point.Name(), point.Tags(), cols, point.Time())
+		if err != nil {
+			return nil, err
+		}
+		bps.AddPoint(newPoint)
+	}
+	return bps, nil
 }
 
-func addId(metrics *controller.MetricsGatherer, scriptId string) {
-	for _, point := range metrics.Points {
-		cols := point.Fields
-		cols["id"] = scriptId
-		point.Fields = cols
+func parseUrl(url string, useSsl bool) string {
+	var prefix string
+
+	if useSsl {
+		prefix = "https://"
+	} else {
+		prefix = "http://"
 	}
+
+	if !strings.HasPrefix(url, prefix) {
+		urls := []string{prefix, url}
+		url = strings.Join(urls, "")
+	}
+	return url
 }

@@ -37,7 +37,7 @@ import (
 	"fmt"
 	"sync"
 
-	"golang.org/x/net/http2"
+	"github.com/bradfitz/http2"
 )
 
 const (

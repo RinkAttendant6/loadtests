@@ -1,4 +1,4 @@
-// Copyright 2014 The oauth2 Authors. All rights reserved.
+// Copyright 2014 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -109,6 +109,7 @@ var brokenAuthHeaderProviders = []string{
 	"https://test-sandbox.auth.corp.google.com",
 	"https://user.gini.net/",
 	"https://api.netatmo.net/",
+	"https://slack.com/",
 }
 
 // providerAuthHeaderWorks reports whether the OAuth2 server identified by the tokenURL

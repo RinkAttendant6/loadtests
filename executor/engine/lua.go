@@ -65,11 +65,11 @@ func Lua(source io.Reader, opts ...LuaOption) (*LuaProgram, error) {
 	configureLua(prgm, l)
 
 	l.Register("info", func(l *lua.State) int {
-		prgm.metrics.IncrLogInfo()
+		prgm.metrics.IncrLogInfo(l.ToValue(1))
 		return prgm.info(l)
 	})
 	l.Register("fatal", func(l *lua.State) int {
-		prgm.metrics.IncrLogFatal()
+		prgm.metrics.IncrLogFatal(l.ToValue(1))
 		return prgm.fatal(l)
 	})
 

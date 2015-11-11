@@ -597,13 +597,9 @@ func (o *Buffer) dec_slice_packed_bool(p *Properties, base structPointer) error 
 		return err
 	}
 	nb := int(nn) // number of bytes of encoded bools
-	fin := o.index + nb
-	if fin < o.index {
-		return errOverflow
-	}
 
 	y := *v
-	for o.index < fin {
+	for i := 0; i < nb; i++ {
 		u, err := p.valDec(o)
 		if err != nil {
 			return err

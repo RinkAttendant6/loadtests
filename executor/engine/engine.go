@@ -28,8 +28,8 @@ type MetricReporter interface {
 	IncrHTTPPost(string, int, time.Duration)
 	IncrHTTPError(string)
 
-	IncrLogInfo()
-	IncrLogFatal()
+	IncrLogInfo(interface{})
+	IncrLogFatal(interface{})
 }
 
 type nullMetric struct{}
@@ -40,5 +40,5 @@ func (_ nullMetric) IncrStepError(string)                    {}
 func (_ nullMetric) IncrHTTPGet(string, int, time.Duration)  {}
 func (_ nullMetric) IncrHTTPPost(string, int, time.Duration) {}
 func (_ nullMetric) IncrHTTPError(string)                    {}
-func (_ nullMetric) IncrLogInfo()                            {}
-func (_ nullMetric) IncrLogFatal()                           {}
+func (_ nullMetric) IncrLogInfo(interface{})                 {}
+func (_ nullMetric) IncrLogFatal(interface{})                {}

@@ -35,6 +35,7 @@ end
 `)
 	prgm, err := engine.Lua(script, engine.SetLogger(buf))
 	if err != nil {
+		t.Log(buf.String())
 		t.Fatal(err)
 	}
 	err = prgm.Execute(context.Background())
