@@ -74,8 +74,6 @@ func (m *MetricsGatherer) IncrHTTPError(url string) {
 }
 
 func (m *MetricsGatherer) IncrLogInfo(msg interface{}) {
-	log.Println(msg)
 }
 func (m *MetricsGatherer) IncrLogFatal(msg interface{}) {
-	log.Println(msg)
 }

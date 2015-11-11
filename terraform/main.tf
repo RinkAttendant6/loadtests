@@ -8,7 +8,7 @@ resource "digitalocean_droplet" "influxdb" {
     size = "1gb"
     image = "coreos-stable"
 
-    ssh_keys = [704170]
+    ssh_keys = ["${var.do_ssh_key}"]
 
     connection {
         user = "core"
@@ -50,7 +50,7 @@ resource "digitalocean_droplet" "scheduler" {
     size = "1gb"
     image = "coreos-stable"
 
-    ssh_keys = [704170]
+    ssh_keys = ["${var.do_ssh_key}"]
 
     connection {
         user = "core"
