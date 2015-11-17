@@ -97,11 +97,7 @@ func (f *InfluxPersister) addId(metrics *controller.MetricsGatherer, scriptId st
 	for _, point := range metrics.BatchPoints.Points() {
 		cols := point.Fields()
 		cols["id"] = scriptId
-		newPoint, err := client.NewPoint(point.Name(), point.Tags(), cols, point.Time())
-		if err != nil {
-			return nil, err
-		}
-		bps.AddPoint(newPoint)
+		bps.AddPoint(client.NewPoint(point.Name(), point.Tags(), cols, point.Time()))
 	}
 	return bps, nil
 }
