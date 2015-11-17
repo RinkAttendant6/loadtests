@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"log"
 	"time"
 
 	client "github.com/influxdb/influxdb/client/v2"
@@ -25,52 +24,34 @@ func (m *MetricsGatherer) IncrStepExecution(step string, dur time.Duration) {}
 func (m *MetricsGatherer) IncrStepError(step string)                        {}
 
 func (m *MetricsGatherer) IncrHTTPGet(url string, code int, duration time.Duration) {
-	point, err := client.NewPoint("GetRequestTable",
+	m.BatchPoints.AddPoint(client.NewPoint("GetRequestTable",
 		nil,
 		map[string]interface{}{
 			"url":         url,
 			"code":        code,
 			"duration_ns": duration.Nanoseconds()},
 		time.Now(),
-	)
-
-	if err != nil {
-		log.Printf("Error creating point: ", err)
-	}
-
-	m.BatchPoints.AddPoint(point)
+	))
 }
 
 func (m *MetricsGatherer) IncrHTTPPost(url string, code int, duration time.Duration) {
-	point, err := client.NewPoint("PostRequestTable",
+	m.BatchPoints.AddPoint(client.NewPoint("PostRequestTable",
 		nil,
 		map[string]interface{}{
 			"url":         url,
 			"code":        code,
 			"duration_ns": duration.Nanoseconds()},
 		time.Now(),
-	)
-
-	if err != nil {
-		log.Printf("Error creating point: ", err)
-	}
-
-	m.BatchPoints.AddPoint(point)
+	))
 }
 
 func (m *MetricsGatherer) IncrHTTPError(url string) {
-	point, err := client.NewPoint("ErrorRequestTable",
+	m.BatchPoints.AddPoint(client.NewPoint("ErrorRequestTable",
 		nil,
 		map[string]interface{}{
 			"url": url},
 		time.Now(),
-	)
-
-	if err != nil {
-		log.Printf("Error creating point: ", err)
-	}
-
-	m.BatchPoints.AddPoint(point)
+	))
 }
 
 func (m *MetricsGatherer) IncrLogInfo(msg interface{}) {
