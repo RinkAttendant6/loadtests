@@ -2,9 +2,10 @@ provider "digitalocean" {
     token = "${var.do_token}"
 }
 
+
 resource "digitalocean_droplet" "influxdb" {
     name = "influxdb"
-    region = "tor1"
+    region = "${var.do_region}"
     size = "1gb"
     image = "coreos-stable"
 
@@ -20,33 +21,33 @@ resource "digitalocean_droplet" "influxdb" {
     }
 
     provisioner "remote-exec" {
-        inline = [
-            "sudo mkdir -p /var/opt/influxdb/",
-            "sudo mkdir -p /etc/opt/influxdb/",
-            "sudo mkdir -p /opt/influxdb/",
+        inline = <<CMD
+sudo mkdir -p /var/opt/influxdb/
+sudo mkdir -p /etc/opt/influxdb/
+sudo mkdir -p /opt/influxdb/
 
-            "sudo groupadd influxdb",
-            "sudo useradd influxdb -g influxdb",
-            "sudo chown -R influxdb:influxdb /var/opt/influxdb/",
+sudo groupadd influxdb
+sudo useradd influxdb -g influxdb
+sudo chown -R influxdb:influxdb /var/opt/influxdb/
 
-            "wget https://s3.amazonaws.com/influxdb/influxdb_0.9.4.2_x86_64.tar.gz",
-            "tar xvfz influxdb_0.9.4.2_x86_64.tar.gz",
-            "sudo mv influxdb_0.9.4.2_x86_64/opt/influxdb/versions/0.9.4.2/influxd /opt/influxdb/influxd",
-            "sudo chmod +x /opt/influxdb/influxd",
+wget https://s3.amazonaws.com/influxdb/influxdb_0.9.4.2_x86_64.tar.gz
+tar xvfz influxdb_0.9.4.2_x86_64.tar.gz
+sudo mv influxdb_0.9.4.2_x86_64/opt/influxdb/versions/0.9.4.2/influxd /opt/influxdb/influxd
+sudo chmod +x /opt/influxdb/influxd
 
-            "sudo mv /tmp/influxdb.conf /etc/opt/influxdb/influxdb.conf",
-            "sudo mv /tmp/influxdb.service /etc/systemd/system/influxdb.service",
-            "sudo systemctl enable influxdb.service",
-            "sudo systemctl start influxdb.service",
-            "while netstat -lnt | awk '$4 ~ /:8086$/ {exit 1}'; do sleep 10; done",
-            "curl --retry 50 -G http://localhost:8086/query --data-urlencode \"u=${var.influx_username}\" --data-urlencode \"p=${var.influx_password}\" --data-urlencode \"q=CREATE DATABASE ${var.influx_dbname}\"",
-        ]
+sudo mv /tmp/influxdb.conf /etc/opt/influxdb/influxdb.conf
+sudo mv /tmp/influxdb.service /etc/systemd/system/influxdb.service
+sudo systemctl enable influxdb.service
+sudo systemctl start influxdb.service
+while netstat -lnt | awk '$4 ~ /:8086$/ {exit 1}'; do sleep 10; done
+curl --retry 50 -G http://localhost:8086/query --data-urlencode "u=${var.influx_username}" --data-urlencode "p=${var.influx_password}" --data-urlencode "q=CREATE DATABASE ${var.influx_dbname}"
+CMD
     }
 }
 
 resource "digitalocean_droplet" "scheduler" {
     name = "scheduler"
-    region = "tor1"
+    region = "${var.do_region}"
     size = "1gb"
     image = "coreos-stable"
 
@@ -57,16 +58,24 @@ resource "digitalocean_droplet" "scheduler" {
     }
 
     provisioner "local-exec" {
-        command = "GOOS=linux go build -o ./files/scheduler/schedulerd github.com/lgpeterson/loadtests/cmd/schedulerd"
+        command = "GOOS=linux godep go build -o ./files/scheduler/schedulerd github.com/lgpeterson/loadtests/cmd/schedulerd"
     }
 
     provisioner "local-exec" {
-        command = "GOOS=linux go build -o ./files/scheduler/executord github.com/lgpeterson/loadtests/executor/cmd/executord"
+        command = "GOOS=linux godep go build -o ./files/scheduler/executord github.com/lgpeterson/loadtests/executor/cmd/executord"
     }
 
     provisioner "file" {
         source = "files/scheduler/"
         destination = "/tmp/"
+    }
+
+    provisioner "local-exec" {
+        command = "rm ./files/scheduler/schedulerd"
+    }
+
+    provisioner "local-exec" {
+        command = "rm ./files/scheduler/executord"
     }
 
     provisioner "remote-exec" {
@@ -84,6 +93,10 @@ INFLUX_USERNAME=${var.influx_username}
 INFLUX_PASSWORD=${var.influx_password}
 DO_TOKEN=${var.do_token}
 EXECUTOR_BINARY_FILEPATH=/opt/executord
+
+PORT=${var.scheduler_port}
+DROPLET_REGION=${var.do_region}
+DROPLET_SIZE=${var.scheduler_executor_size}
 EOF
 
 sudo mv /tmp/scheduler.env /etc/scheduler/scheduler.env
@@ -93,3 +106,4 @@ sudo systemctl start scheduler.service
 CMD
     }
 }
+
