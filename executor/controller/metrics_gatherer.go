@@ -23,8 +23,7 @@ func NewMetricsGatherer(scriptId string) (*MetricsGatherer, error) {
 func (m *MetricsGatherer) IncrScriptExecution() {
 	m.BatchPoints.AddPoint(client.NewPoint("ExecutionExecutionTable",
 		nil,
-		map[string]interface{}{
-			"id": m.ScriptId},
+		map[string]interface{}{"id": m.ScriptId},
 		time.Now(),
 	))
 }
@@ -35,7 +34,8 @@ func (m *MetricsGatherer) IncrStepExecution(step string, dur time.Duration) {
 		map[string]interface{}{
 			"id":          m.ScriptId,
 			"duration_ns": dur.Nanoseconds(),
-			"step":        step},
+			"step":        step,
+		},
 		time.Now(),
 	))
 }
@@ -45,7 +45,8 @@ func (m *MetricsGatherer) IncrStepError(step string) {
 		nil,
 		map[string]interface{}{
 			"id":   m.ScriptId,
-			"step": step},
+			"step": step,
+		},
 		time.Now(),
 	))
 }
@@ -57,7 +58,8 @@ func (m *MetricsGatherer) IncrHTTPGet(url string, code int, duration time.Durati
 			"id":          m.ScriptId,
 			"url":         url,
 			"code":        code,
-			"duration_ns": duration.Nanoseconds()},
+			"duration_ns": duration.Nanoseconds(),
+		},
 		time.Now(),
 	))
 }
@@ -69,7 +71,8 @@ func (m *MetricsGatherer) IncrHTTPPost(url string, code int, duration time.Durat
 			"id":          m.ScriptId,
 			"url":         url,
 			"code":        code,
-			"duration_ns": duration.Nanoseconds()},
+			"duration_ns": duration.Nanoseconds(),
+		},
 		time.Now(),
 	))
 }
@@ -79,7 +82,8 @@ func (m *MetricsGatherer) IncrHTTPError(url string) {
 		nil,
 		map[string]interface{}{
 			"id":  m.ScriptId,
-			"url": url},
+			"url": url,
+		},
 		time.Now(),
 	))
 }
@@ -97,7 +101,8 @@ func (m *MetricsGatherer) logMsg(msg interface{}, level string) {
 		map[string]interface{}{
 			"id":    m.ScriptId,
 			"msg":   msg,
-			"level": level},
+			"level": level,
+		},
 		time.Now(),
 	))
 }
