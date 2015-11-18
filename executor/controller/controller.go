@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -38,13 +39,13 @@ func (f *Controller) runScript(persister Persister, halt chan struct{}) {
 	jobChannel := make(chan struct{}, f.Command.MaxRequestsPerSecond)
 	done := make(chan struct{})
 	var completeChannels []chan struct{}
-	defer close(jobChannel)
 	var wg sync.WaitGroup
 
 	// Create all the workers that will listen for jobs
 	for i := int32(0); i < f.Command.MaxWorkers; i++ {
 		workerDone := make(chan struct{})
 		w := &worker{
+			WorkerId:   i,
 			Persister:  persister,
 			Command:    f.Command,
 			Wait:       &wg,
@@ -75,16 +76,23 @@ func (f *Controller) runScript(persister Persister, halt chan struct{}) {
 	}()
 
 	for {
+	select_again:
 		select {
 		case <-halt:
+			close(jobChannel)
 			stopWorkers(completeChannels, &wg)
 			return
 		case <-done:
+			close(jobChannel)
 			stopWorkers(completeChannels, &wg)
 			return
 		case <-ticker.C:
 			for i := 1; i < iterations; i++ {
-				jobChannel <- struct{}{}
+				select {
+				case jobChannel <- struct{}{}:
+				case <-done:
+					break select_again
+				}
 			}
 		case <-growthTicker.C:
 			if growthActive {
@@ -103,8 +111,8 @@ func (f *Controller) runScript(persister Persister, halt chan struct{}) {
 }
 
 func stopWorkers(completeChannels []chan struct{}, wg *sync.WaitGroup) {
+	log.Println("Ending load test")
 	for _, workerDoneChannel := range completeChannels {
-		workerDoneChannel <- struct{}{}
 		close(workerDoneChannel)
 	}
 	wg.Wait()

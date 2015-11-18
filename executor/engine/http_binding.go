@@ -29,7 +29,7 @@ func (h *httpBind) get(l *lua.State) int {
 	resp, err := h.client.Get(u)
 	if err != nil {
 		h.metrics.IncrHTTPError(u)
-		lua.Errorf(l, "lua-http: can't GET: %v", err)
+		lua.Errorf(l, "lua-http: can't GET: %s", err.Error())
 		return 0
 	}
 	defer resp.Body.Close()
@@ -40,7 +40,7 @@ func (h *httpBind) get(l *lua.State) int {
 	args, err := pushResponse(l, resp)
 	if err != nil {
 		h.metrics.IncrHTTPError(u)
-		lua.Errorf(l, "lua-http: can't read body from GET: %v", err)
+		lua.Errorf(l, "lua-http: can't read body from GET: %s", err.Error())
 		return args
 	}
 
@@ -57,7 +57,7 @@ func (h *httpBind) post(l *lua.State) int {
 	resp, err := h.client.Post(u, contentType, strings.NewReader(body))
 	if err != nil {
 		h.metrics.IncrHTTPError(u)
-		lua.Errorf(l, "lua-http: can't POST: %v", err)
+		lua.Errorf(l, "lua-http: can't POST: %s", err.Error())
 		return 0
 	}
 	defer resp.Body.Close()
@@ -68,7 +68,7 @@ func (h *httpBind) post(l *lua.State) int {
 	args, err := pushResponse(l, resp)
 	if err != nil {
 		h.metrics.IncrHTTPError(u)
-		lua.Errorf(l, "lua-http: can't read body from POST: %v", err)
+		lua.Errorf(l, "lua-http: can't read body from POST: %s", err.Error())
 		return args
 	}
 

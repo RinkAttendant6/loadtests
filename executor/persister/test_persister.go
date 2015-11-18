@@ -20,7 +20,7 @@ func (f *TestPersister) Persist(metrics *controller.MetricsGatherer) error {
 			data := fmt.Sprintf("%s: %s %d", point.Fields()["id"], point.Fields()["url"], point.Fields()["code"])
 			f.GetRequestContent = append(f.GetRequestContent, data)
 		} else {
-			data := fmt.Sprintf("%s: ", point.Fields()["id"])
+			data := fmt.Sprintf("%s: %v", point.Fields()["id"], point.Fields())
 			f.LoggingContent = append(f.LoggingContent, data)
 		}
 	}

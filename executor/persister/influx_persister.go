@@ -77,6 +77,7 @@ func (f *InfluxPersister) DropData(tableName string) error {
 // Persist saves the data to a file with public permissions
 func (f *InfluxPersister) Persist(metrics *controller.MetricsGatherer) error {
 	bps := metrics.BatchPoints
+	bps.SetDatabase(f.database)
 	err := f.client.Write(bps)
 	return err
 }

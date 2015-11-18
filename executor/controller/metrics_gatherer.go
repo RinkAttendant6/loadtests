@@ -95,6 +95,16 @@ func (m *MetricsGatherer) IncrLogFatal(msg interface{}) {
 	m.logMsg(msg, "fatal")
 }
 
+func (m *MetricsGatherer) AddLuaError(err error) {
+	m.BatchPoints.AddPoint(client.NewPoint("LuaErrorTable",
+		nil,
+		map[string]interface{}{
+			"id":    m.ScriptId,
+			"error": err.Error(),
+		},
+		time.Now(),
+	))
+}
 func (m *MetricsGatherer) logMsg(msg interface{}, level string) {
 	m.BatchPoints.AddPoint(client.NewPoint("LogTable",
 		nil,

@@ -115,7 +115,7 @@ func listenForHalt(halt chan struct{}, halted *bool, serverErr *error, server ex
 		// There is no way to recv with polling, so I resort to catching the panic when the connection closes
 		defer close(halt)
 		if serverErr := recover(); serverErr != nil {
-			fmt.Printf("Recovered from panic: %q \n", serverErr)
+			log.Printf("Debug: While listening for 'Halt' recovered from panic: %q \n", serverErr)
 		}
 	}()
 	for {

@@ -11,6 +11,7 @@ import (
 )
 
 type worker struct {
+	WorkerId   int32
 	Persister  Persister
 	Command    *executorGRPC.ScriptParams
 	Wait       *sync.WaitGroup
@@ -20,41 +21,48 @@ type worker struct {
 
 func (w *worker) execute() {
 	w.Wait.Add(1)
+	defer log.Printf("Worker: %d closed", w.WorkerId)
 	defer w.Wait.Done()
 	for {
 		select {
 		case <-w.Done:
 			return
-		case <-w.JobChannel:
+		case _, ok := <-w.JobChannel:
+			// Make sure that the channels are not closed
+			if !ok {
+				return
+			}
+			select {
+			case <-w.Done:
+				return
+			default:
+			}
 			scriptReader := strings.NewReader(w.Command.Script)
 			metrics, err := NewMetricsGatherer(w.Command.ScriptId)
 			if err != nil {
 				// This should not happen, because there are no parameters to NewMetricsGatherer
 				// But I should log it for testing/debugging purposes
-				log.Printf("Error creating metrics gatherer: %v", err)
+				log.Printf("Worker %d, Error creating metrics gatherer: %v", w.WorkerId, err)
 				return
 			}
 			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(metrics))
 			if err != nil {
 				// This should not be because the script did not compile, if it
 				// did not compile it would be reported to the user before this
-				log.Printf("Error creating lua script: %v", err)
+				log.Printf("Worker %d, Error creating lua script: %v", w.WorkerId, err)
 				return
 			}
 			err = prog.Execute(context.Background())
 
 			if err != nil {
 				// I assume I can keep going if the lua script encoutered an error
-				log.Printf("Error running lua script: %v", err)
-				// TODO: Log error in influx?
-				continue
+				metrics.AddLuaError(err)
 			}
 
 			err = w.Persister.Persist(metrics)
 			if err != nil {
 				// I assume I can keep going if the lua script encoutered an error
-				log.Printf("Error saving output of lua script: %v", err)
-				continue
+				log.Printf("Worker %d, Error saving output of lua script: %v", w.WorkerId, err)
 			}
 		}
 
