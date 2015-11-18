@@ -20,7 +20,7 @@ func main() {
 }
 
 func testIflux(ip string) {
-	metrics, err := controller.NewMetricsGatherer()
+	metrics, err := controller.NewMetricsGatherer("12345")
 	if err != nil {
 		log.Fatalf("Error creating influx persistor: %v", err)
 	}
@@ -34,7 +34,7 @@ func testIflux(ip string) {
 	if err != nil {
 		log.Fatalf("Error creating influx persistor: %v", err)
 	}
-	err = persister.Persist("test_run", metrics)
+	err = persister.Persist(metrics)
 	if err != nil {
 		log.Fatalf("Error with influx persistor: %v", err)
 	}
