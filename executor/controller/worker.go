@@ -27,7 +27,7 @@ func (w *worker) execute() {
 			return
 		case <-w.JobChannel:
 			scriptReader := strings.NewReader(w.Command.Script)
-			metrics, err := NewMetricsGatherer()
+			metrics, err := NewMetricsGatherer(w.Command.ScriptId)
 			if err != nil {
 				// This should not happen, because there are no parameters to NewMetricsGatherer
 				// But I should log it for testing/debugging purposes
@@ -50,7 +50,7 @@ func (w *worker) execute() {
 				continue
 			}
 
-			err = w.Persister.Persist(w.Command.ScriptId, metrics)
+			err = w.Persister.Persist(metrics)
 			if err != nil {
 				// I assume I can keep going if the lua script encoutered an error
 				log.Printf("Error saving output of lua script: %v", err)

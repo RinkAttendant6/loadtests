@@ -2,7 +2,6 @@ package persister
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -76,30 +75,10 @@ func (f *InfluxPersister) DropData(tableName string) error {
 }
 
 // Persist saves the data to a file with public permissions
-func (f *InfluxPersister) Persist(scriptId string, metrics *controller.MetricsGatherer) error {
-	bps, err := f.addId(metrics, scriptId)
-	if err != nil {
-		return err
-	}
-	log.Printf("%v", bps.Points())
-	err = f.client.Write(bps)
+func (f *InfluxPersister) Persist(metrics *controller.MetricsGatherer) error {
+	bps := metrics.BatchPoints
+	err := f.client.Write(bps)
 	return err
-}
-func (f *InfluxPersister) addId(metrics *controller.MetricsGatherer, scriptId string) (client.BatchPoints, error) {
-	conf := client.BatchPointsConfig{
-		Database:        f.database,
-		RetentionPolicy: "default",
-	}
-	bps, err := client.NewBatchPoints(conf)
-	if err != nil {
-		return nil, err
-	}
-	for _, point := range metrics.BatchPoints.Points() {
-		cols := point.Fields()
-		cols["id"] = scriptId
-		bps.AddPoint(client.NewPoint(point.Name(), point.Tags(), cols, point.Time()))
-	}
-	return bps, nil
 }
 
 func parseUrl(url string, useSsl bool) string {

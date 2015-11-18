@@ -8,18 +8,21 @@ import (
 
 // TestPersister is a persister that will save the output to a file
 type TestPersister struct {
-	Content []string
+	GetRequestContent []string
+	LoggingContent    []string
 }
 
 // Persist TestPersister the data to a file with public permissions
-func (f *TestPersister) Persist(scriptId string, metrics *controller.MetricsGatherer) error {
+func (f *TestPersister) Persist(metrics *controller.MetricsGatherer) error {
 	for _, point := range metrics.BatchPoints.Points() {
-		data := fmt.Sprintf("%s: %s %d", scriptId, point.Fields()["url"], point.Fields()["code"])
-		f.Content = append(f.Content, data)
-	}
-	if len(metrics.BatchPoints.Points()) == 0 {
-		data := fmt.Sprintf("%s: ", scriptId)
-		f.Content = append(f.Content, data)
+		if point.Name() == "GetRequestTable" {
+			//fmt.Printf("%v\n", point.Fields())
+			data := fmt.Sprintf("%s: %s %d", point.Fields()["id"], point.Fields()["url"], point.Fields()["code"])
+			f.GetRequestContent = append(f.GetRequestContent, data)
+		} else {
+			data := fmt.Sprintf("%s: ", point.Fields()["id"])
+			f.LoggingContent = append(f.LoggingContent, data)
+		}
 	}
 
 	return nil

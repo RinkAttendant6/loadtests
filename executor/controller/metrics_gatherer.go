@@ -8,25 +8,53 @@ import (
 
 type MetricsGatherer struct {
 	BatchPoints client.BatchPoints
+	ScriptId    string
 }
 
-func NewMetricsGatherer() (*MetricsGatherer, error) {
+func NewMetricsGatherer(scriptId string) (*MetricsGatherer, error) {
 	conf := client.BatchPointsConfig{}
 	bps, err := client.NewBatchPoints(conf)
 	if err != nil {
 		return nil, err
 	}
-	return &MetricsGatherer{BatchPoints: bps}, nil
+	return &MetricsGatherer{BatchPoints: bps, ScriptId: scriptId}, nil
 }
 
-func (m *MetricsGatherer) IncrScriptExecution()                             {}
-func (m *MetricsGatherer) IncrStepExecution(step string, dur time.Duration) {}
-func (m *MetricsGatherer) IncrStepError(step string)                        {}
+func (m *MetricsGatherer) IncrScriptExecution() {
+	m.BatchPoints.AddPoint(client.NewPoint("ExecutionExecutionTable",
+		nil,
+		map[string]interface{}{
+			"id": m.ScriptId},
+		time.Now(),
+	))
+}
+
+func (m *MetricsGatherer) IncrStepExecution(step string, dur time.Duration) {
+	m.BatchPoints.AddPoint(client.NewPoint("StepExecutionTable",
+		nil,
+		map[string]interface{}{
+			"id":          m.ScriptId,
+			"duration_ns": dur.Nanoseconds(),
+			"step":        step},
+		time.Now(),
+	))
+}
+
+func (m *MetricsGatherer) IncrStepError(step string) {
+	m.BatchPoints.AddPoint(client.NewPoint("StepErrorTable",
+		nil,
+		map[string]interface{}{
+			"id":   m.ScriptId,
+			"step": step},
+		time.Now(),
+	))
+}
 
 func (m *MetricsGatherer) IncrHTTPGet(url string, code int, duration time.Duration) {
 	m.BatchPoints.AddPoint(client.NewPoint("GetRequestTable",
 		nil,
 		map[string]interface{}{
+			"id":          m.ScriptId,
 			"url":         url,
 			"code":        code,
 			"duration_ns": duration.Nanoseconds()},
@@ -38,6 +66,7 @@ func (m *MetricsGatherer) IncrHTTPPost(url string, code int, duration time.Durat
 	m.BatchPoints.AddPoint(client.NewPoint("PostRequestTable",
 		nil,
 		map[string]interface{}{
+			"id":          m.ScriptId,
 			"url":         url,
 			"code":        code,
 			"duration_ns": duration.Nanoseconds()},
@@ -49,12 +78,26 @@ func (m *MetricsGatherer) IncrHTTPError(url string) {
 	m.BatchPoints.AddPoint(client.NewPoint("ErrorRequestTable",
 		nil,
 		map[string]interface{}{
+			"id":  m.ScriptId,
 			"url": url},
 		time.Now(),
 	))
 }
 
 func (m *MetricsGatherer) IncrLogInfo(msg interface{}) {
+	m.logMsg(msg, "info")
 }
 func (m *MetricsGatherer) IncrLogFatal(msg interface{}) {
+	m.logMsg(msg, "fatal")
+}
+
+func (m *MetricsGatherer) logMsg(msg interface{}, level string) {
+	m.BatchPoints.AddPoint(client.NewPoint("LogTable",
+		nil,
+		map[string]interface{}{
+			"id":    m.ScriptId,
+			"msg":   msg,
+			"level": level},
+		time.Now(),
+	))
 }

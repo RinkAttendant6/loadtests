@@ -19,7 +19,7 @@ type Controller struct {
 
 // Persister is an interface to save whatever data is grabbed from the executor
 type Persister interface {
-	Persist(scriptName string, metrics *MetricsGatherer) error
+	Persist(metrics *MetricsGatherer) error
 	SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error
 }
 

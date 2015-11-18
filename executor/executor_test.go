@@ -69,7 +69,7 @@ func TestValidLoggingCode(t *testing.T) {
 	// Create the time when it should be done
 	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
-	time.AfterFunc(time.Second*10, func() { panic("too long") })
+	long := time.AfterFunc(time.Second*10, func() { panic("too long") })
 
 	for timeMock.Now().Before(doneTime) {
 		timeMock.Add(time.Millisecond * 100)
@@ -87,10 +87,11 @@ func TestValidLoggingCode(t *testing.T) {
 	s.Stop()
 	wg.Wait()
 	wg2.Wait()
+	long.Stop()
 
 	// Validate responses
 	if status.Status == "OK" {
-		verifyResults(scriptId, t, &gp)
+		verifyResults(scriptId, t, gp.LoggingContent)
 	} else {
 		t.Fatalf("Received error when executing: %s", status.Status)
 	}
@@ -130,19 +131,17 @@ func TestValidGetCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error from grpc: %v", err)
 	}
-
 	// Create the time when it should be done
 	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
-	time.AfterFunc(time.Second*10, func() { panic("too long") })
+	long := time.AfterFunc(time.Second*10, func() { panic("too long") })
 
 	// Mock time passage
 	for timeMock.Now().Before(doneTime) {
 		timeMock.Add(time.Millisecond * 100)
 		time.Sleep(time.Millisecond * 1)
 	}
-
 	status, err := r.Recv()
 	if err != nil {
 		t.Fatalf("Received error when executing: %v", err)
@@ -153,6 +152,7 @@ func TestValidGetCode(t *testing.T) {
 	s.Stop()
 	wg.Wait()
 	wg2.Wait()
+	long.Stop()
 
 	// Validate responses
 	if status.Status == "OK" {
@@ -160,9 +160,9 @@ func TestValidGetCode(t *testing.T) {
 			t.Fatal("Received no get requests from script")
 		}
 		// Check that the script stored the correct test ID
-		verifyResults(scriptId, t, &gp)
+		verifyResults(scriptId, t, gp.GetRequestContent)
 		// Make sure it got good responses
-		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
+		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, gp.GetRequestContent)
 	} else {
 		t.Fatalf("Received error when executing: %s", status.Status)
 	}
@@ -210,7 +210,7 @@ func TestHalt(t *testing.T) {
 	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
-	time.AfterFunc(time.Second*10, func() { panic("too long") })
+	long := time.AfterFunc(time.Second*10, func() { panic("too long") })
 
 	// Mock time passage
 	for timeMock.Now().Before(haltTime) {
@@ -222,7 +222,7 @@ func TestHalt(t *testing.T) {
 	// Make sure it had time to fully halt before contining
 	time.Sleep(time.Millisecond * 50)
 	// Get the current number of requests after the halt
-	numRequests := len(gp.Content)
+	numRequests := len(gp.GetRequestContent)
 
 	// Continue Mock time passage
 	for timeMock.Now().Before(doneTime) {
@@ -240,6 +240,7 @@ func TestHalt(t *testing.T) {
 	s.Stop()
 	wg.Wait()
 	wg2.Wait()
+	long.Stop()
 
 	// Validate responses
 	if status.Status == "Halted" {
@@ -247,12 +248,12 @@ func TestHalt(t *testing.T) {
 			t.Fatal("Received no get requests from script")
 		}
 		// Check that the script stored the correct test ID
-		verifyResults(scriptId, t, &gp)
+		verifyResults(scriptId, t, gp.GetRequestContent)
 		// Make sure it got good responses
-		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
+		verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, gp.GetRequestContent)
 		// Make sure that it did not keep sending after the halt
-		if len(gp.Content) != numRequests {
-			t.Fatalf("number of tests not the same, expected %d, actual: %d", numRequests, len(gp.Content))
+		if len(gp.GetRequestContent) != numRequests {
+			t.Fatalf("number of tests not the same, expected %d, actual: %d", numRequests, len(gp.GetRequestContent))
 		}
 	} else {
 		t.Fatalf("Received error when executing: %s", status.Status)
@@ -300,7 +301,7 @@ func TestDisconnect(t *testing.T) {
 	doneTime := timeMock.Now().Add((10 * time.Second) + time.Second)
 
 	// Make sure it doesn't deadlock
-	time.AfterFunc(time.Second*10, func() { panic("too long") })
+	long := time.AfterFunc(time.Second*10, func() { panic("too long") })
 
 	// Mock time passage
 	for timeMock.Now().Before(haltTime) {
@@ -313,7 +314,7 @@ func TestDisconnect(t *testing.T) {
 	time.Sleep(time.Millisecond * 50)
 	log.Println("Connection closed")
 	// Get the current number of requests after the halt
-	numRequests := len(gp.Content)
+	numRequests := len(gp.GetRequestContent)
 
 	// Continue Mock time passage
 	for timeMock.Now().Before(doneTime) {
@@ -331,15 +332,16 @@ func TestDisconnect(t *testing.T) {
 	s.Stop()
 	wg.Wait()
 	wg2.Wait()
+	long.Stop()
 
 	// Validate responses
 	// Check that the script stored the correct test ID
-	verifyResults(scriptId, t, &gp)
+	verifyResults(scriptId, t, gp.GetRequestContent)
 	// Make sure it got good responses
-	verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, &gp)
+	verifyResults(fmt.Sprintf("%s %d", srv.URL, 200), t, gp.GetRequestContent)
 	// Make sure that it did not keep sending after the halt
-	if len(gp.Content) != numRequests {
-		t.Fatalf("number of tests not the same, expected %d, actual: %d", numRequests, len(gp.Content))
+	if len(gp.GetRequestContent) != numRequests {
+		t.Fatalf("number of tests not the same, expected %d, actual: %d", numRequests, len(gp.GetRequestContent))
 	}
 }
 
@@ -383,18 +385,18 @@ func TestInvalidCode(t *testing.T) {
 	wg2.Wait()
 }
 
-func verifyResults(server string, t *testing.T, gp *persister.TestPersister) {
-	if len(gp.Content) < 1 {
+func verifyResults(server string, t *testing.T, content []string) {
+	if len(content) < 1 {
 		// attempt to wait for it, it might be slow
 		time.Sleep(time.Second * 5)
 		// Now I check again, if it fails then the code is taking to long
-		if len(gp.Content) < 1 {
+		if len(content) < 1 {
 			t.Error("No return")
 		}
 	}
-	for i := 0; i < len(gp.Content); i++ {
-		if !strings.Contains(gp.Content[i], server) {
-			t.Fatalf("Invalid content was looking for %s got: %s", server, gp.Content[i])
+	for i := 0; i < len(content); i++ {
+		if !strings.Contains(content[i], server) {
+			t.Fatalf("Invalid content was looking for %s got: %s", server, content[i])
 		}
 	}
 }
