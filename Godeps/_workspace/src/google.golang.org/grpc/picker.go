@@ -35,14 +35,19 @@ package grpc
 
 import (
 	"time"
+
+	"golang.org/x/net/context"
+	"google.golang.org/grpc/transport"
 )
 
 // Picker picks a Conn for RPC requests.
-// This is EXPERIMENTAL and Please do not implement your own Picker for now.
+// This is EXPERIMENTAL and please do not implement your own Picker for now.
 type Picker interface {
-	// Pick returns the Conn to use for the upcoming RPC. It may return different
-	// Conn's up to the implementation.
-	Pick() (*Conn, error)
+	// Init does initial processing for the Picker, e.g., initiate some connections.
+	Init(cc *ClientConn) error
+	// Pick blocks until either a transport.ClientTransport is ready for the upcoming RPC
+	// or some error happens.
+	Pick(ctx context.Context) (transport.ClientTransport, error)
 	// State returns the connectivity state of the underlying connections.
 	State() ConnectivityState
 	// WaitForStateChange blocks until the state changes to something other than
@@ -53,24 +58,23 @@ type Picker interface {
 	Close() error
 }
 
-func newUnicastPicker(target string, dopts dialOptions) (Picker, error) {
-	c, err := NewConn(target, dopts)
-	if err != nil {
-		return nil, err
-	}
-	return &unicastPicker{
-		conn: c,
-	}, nil
-}
-
 // unicastPicker is the default Picker which is used when there is no custom Picker
 // specified by users. It always picks the same Conn.
 type unicastPicker struct {
 	conn *Conn
 }
 
-func (p *unicastPicker) Pick() (*Conn, error) {
-	return p.conn, nil
+func (p *unicastPicker) Init(cc *ClientConn) error {
+	c, err := NewConn(cc)
+	if err != nil {
+		return err
+	}
+	p.conn = c
+	return nil
+}
+
+func (p *unicastPicker) Pick(ctx context.Context) (transport.ClientTransport, error) {
+	return p.conn.Wait(ctx)
 }
 
 func (p *unicastPicker) State() ConnectivityState {

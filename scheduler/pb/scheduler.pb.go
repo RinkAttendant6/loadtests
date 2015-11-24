@@ -17,6 +17,8 @@ It has these top-level messages:
 package pb
 
 import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
 
 import (
 	context "golang.org/x/net/context"
@@ -24,11 +26,9 @@ import (
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
-
-// Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 type LoadTestReq struct {
 	Url                       string  `protobuf:"bytes,1,opt,name=url" json:"url,omitempty"`
@@ -42,87 +42,206 @@ type LoadTestReq struct {
 	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=max_requests_per_second" json:"max_requests_per_second,omitempty"`
 }
 
-func (m *LoadTestReq) Reset()         { *m = LoadTestReq{} }
-func (m *LoadTestReq) String() string { return proto.CompactTextString(m) }
-func (*LoadTestReq) ProtoMessage()    {}
+func (m *LoadTestReq) Reset()                    { *m = LoadTestReq{} }
+func (m *LoadTestReq) String() string            { return proto.CompactTextString(m) }
+func (*LoadTestReq) ProtoMessage()               {}
+func (*LoadTestReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 type LoadTestResp struct {
-	Preparing *LoadTestResp_Preparing `protobuf:"bytes,1,opt,name=preparing" json:"preparing,omitempty"`
-	Start     *LoadTestResp_Started   `protobuf:"bytes,2,opt,name=start" json:"start,omitempty"`
-	Finish    *LoadTestResp_Finished  `protobuf:"bytes,3,opt,name=finish" json:"finish,omitempty"`
-	Error     *LoadTestResp_Errored   `protobuf:"bytes,4,opt,name=error" json:"error,omitempty"`
+	// Types that are valid to be assigned to Phase:
+	//	*LoadTestResp_Preparing_
+	//	*LoadTestResp_Start
+	//	*LoadTestResp_Finish
+	//	*LoadTestResp_Error
+	Phase isLoadTestResp_Phase `protobuf_oneof:"phase"`
 }
 
-func (m *LoadTestResp) Reset()         { *m = LoadTestResp{} }
-func (m *LoadTestResp) String() string { return proto.CompactTextString(m) }
-func (*LoadTestResp) ProtoMessage()    {}
+func (m *LoadTestResp) Reset()                    { *m = LoadTestResp{} }
+func (m *LoadTestResp) String() string            { return proto.CompactTextString(m) }
+func (*LoadTestResp) ProtoMessage()               {}
+func (*LoadTestResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+type isLoadTestResp_Phase interface {
+	isLoadTestResp_Phase()
+}
+
+type LoadTestResp_Preparing_ struct {
+	Preparing *LoadTestResp_Preparing `protobuf:"bytes,1,opt,name=preparing,oneof"`
+}
+type LoadTestResp_Start struct {
+	Start *LoadTestResp_Started `protobuf:"bytes,2,opt,name=start,oneof"`
+}
+type LoadTestResp_Finish struct {
+	Finish *LoadTestResp_Finished `protobuf:"bytes,3,opt,name=finish,oneof"`
+}
+type LoadTestResp_Error struct {
+	Error *LoadTestResp_Errored `protobuf:"bytes,4,opt,name=error,oneof"`
+}
+
+func (*LoadTestResp_Preparing_) isLoadTestResp_Phase() {}
+func (*LoadTestResp_Start) isLoadTestResp_Phase()      {}
+func (*LoadTestResp_Finish) isLoadTestResp_Phase()     {}
+func (*LoadTestResp_Error) isLoadTestResp_Phase()      {}
+
+func (m *LoadTestResp) GetPhase() isLoadTestResp_Phase {
+	if m != nil {
+		return m.Phase
+	}
+	return nil
+}
 
 func (m *LoadTestResp) GetPreparing() *LoadTestResp_Preparing {
-	if m != nil {
-		return m.Preparing
+	if x, ok := m.GetPhase().(*LoadTestResp_Preparing_); ok {
+		return x.Preparing
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetStart() *LoadTestResp_Started {
-	if m != nil {
-		return m.Start
+	if x, ok := m.GetPhase().(*LoadTestResp_Start); ok {
+		return x.Start
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetFinish() *LoadTestResp_Finished {
-	if m != nil {
-		return m.Finish
+	if x, ok := m.GetPhase().(*LoadTestResp_Finish); ok {
+		return x.Finish
 	}
 	return nil
 }
 
 func (m *LoadTestResp) GetError() *LoadTestResp_Errored {
-	if m != nil {
-		return m.Error
+	if x, ok := m.GetPhase().(*LoadTestResp_Error); ok {
+		return x.Error
 	}
 	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*LoadTestResp) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _LoadTestResp_OneofMarshaler, _LoadTestResp_OneofUnmarshaler, []interface{}{
+		(*LoadTestResp_Preparing_)(nil),
+		(*LoadTestResp_Start)(nil),
+		(*LoadTestResp_Finish)(nil),
+		(*LoadTestResp_Error)(nil),
+	}
+}
+
+func _LoadTestResp_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*LoadTestResp)
+	// phase
+	switch x := m.Phase.(type) {
+	case *LoadTestResp_Preparing_:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Preparing); err != nil {
+			return err
+		}
+	case *LoadTestResp_Start:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Start); err != nil {
+			return err
+		}
+	case *LoadTestResp_Finish:
+		b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Finish); err != nil {
+			return err
+		}
+	case *LoadTestResp_Error:
+		b.EncodeVarint(4<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Error); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("LoadTestResp.Phase has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _LoadTestResp_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*LoadTestResp)
+	switch tag {
+	case 1: // phase.preparing
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(LoadTestResp_Preparing)
+		err := b.DecodeMessage(msg)
+		m.Phase = &LoadTestResp_Preparing_{msg}
+		return true, err
+	case 2: // phase.start
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(LoadTestResp_Started)
+		err := b.DecodeMessage(msg)
+		m.Phase = &LoadTestResp_Start{msg}
+		return true, err
+	case 3: // phase.finish
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(LoadTestResp_Finished)
+		err := b.DecodeMessage(msg)
+		m.Phase = &LoadTestResp_Finish{msg}
+		return true, err
+	case 4: // phase.error
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(LoadTestResp_Errored)
+		err := b.DecodeMessage(msg)
+		m.Phase = &LoadTestResp_Error{msg}
+		return true, err
+	default:
+		return false, nil
+	}
 }
 
 type LoadTestResp_Preparing struct {
 	Count int32 `protobuf:"varint,1,opt,name=count" json:"count,omitempty"`
 }
 
-func (m *LoadTestResp_Preparing) Reset()         { *m = LoadTestResp_Preparing{} }
-func (m *LoadTestResp_Preparing) String() string { return proto.CompactTextString(m) }
-func (*LoadTestResp_Preparing) ProtoMessage()    {}
+func (m *LoadTestResp_Preparing) Reset()                    { *m = LoadTestResp_Preparing{} }
+func (m *LoadTestResp_Preparing) String() string            { return proto.CompactTextString(m) }
+func (*LoadTestResp_Preparing) ProtoMessage()               {}
+func (*LoadTestResp_Preparing) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1, 0} }
 
 type LoadTestResp_Started struct {
 }
 
-func (m *LoadTestResp_Started) Reset()         { *m = LoadTestResp_Started{} }
-func (m *LoadTestResp_Started) String() string { return proto.CompactTextString(m) }
-func (*LoadTestResp_Started) ProtoMessage()    {}
+func (m *LoadTestResp_Started) Reset()                    { *m = LoadTestResp_Started{} }
+func (m *LoadTestResp_Started) String() string            { return proto.CompactTextString(m) }
+func (*LoadTestResp_Started) ProtoMessage()               {}
+func (*LoadTestResp_Started) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1, 1} }
 
 type LoadTestResp_Finished struct {
 }
 
-func (m *LoadTestResp_Finished) Reset()         { *m = LoadTestResp_Finished{} }
-func (m *LoadTestResp_Finished) String() string { return proto.CompactTextString(m) }
-func (*LoadTestResp_Finished) ProtoMessage()    {}
+func (m *LoadTestResp_Finished) Reset()                    { *m = LoadTestResp_Finished{} }
+func (m *LoadTestResp_Finished) String() string            { return proto.CompactTextString(m) }
+func (*LoadTestResp_Finished) ProtoMessage()               {}
+func (*LoadTestResp_Finished) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1, 2} }
 
 type LoadTestResp_Errored struct {
 	Error string `protobuf:"bytes,1,opt,name=error" json:"error,omitempty"`
 }
 
-func (m *LoadTestResp_Errored) Reset()         { *m = LoadTestResp_Errored{} }
-func (m *LoadTestResp_Errored) String() string { return proto.CompactTextString(m) }
-func (*LoadTestResp_Errored) ProtoMessage()    {}
+func (m *LoadTestResp_Errored) Reset()                    { *m = LoadTestResp_Errored{} }
+func (m *LoadTestResp_Errored) String() string            { return proto.CompactTextString(m) }
+func (*LoadTestResp_Errored) ProtoMessage()               {}
+func (*LoadTestResp_Errored) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1, 3} }
 
 type RegisterExecutorReq struct {
 	DropletId int64 `protobuf:"varint,1,opt,name=droplet_id" json:"droplet_id,omitempty"`
 	Port      int64 `protobuf:"varint,2,opt,name=port" json:"port,omitempty"`
 }
 
-func (m *RegisterExecutorReq) Reset()         { *m = RegisterExecutorReq{} }
-func (m *RegisterExecutorReq) String() string { return proto.CompactTextString(m) }
-func (*RegisterExecutorReq) ProtoMessage()    {}
+func (m *RegisterExecutorReq) Reset()                    { *m = RegisterExecutorReq{} }
+func (m *RegisterExecutorReq) String() string            { return proto.CompactTextString(m) }
+func (*RegisterExecutorReq) ProtoMessage()               {}
+func (*RegisterExecutorReq) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type RegisterExecutorResp struct {
 	InfluxAddr     string `protobuf:"bytes,1,opt,name=influx_addr" json:"influx_addr,omitempty"`
@@ -132,9 +251,25 @@ type RegisterExecutorResp struct {
 	InfluxSsl      bool   `protobuf:"varint,5,opt,name=influx_ssl" json:"influx_ssl,omitempty"`
 }
 
-func (m *RegisterExecutorResp) Reset()         { *m = RegisterExecutorResp{} }
-func (m *RegisterExecutorResp) String() string { return proto.CompactTextString(m) }
-func (*RegisterExecutorResp) ProtoMessage()    {}
+func (m *RegisterExecutorResp) Reset()                    { *m = RegisterExecutorResp{} }
+func (m *RegisterExecutorResp) String() string            { return proto.CompactTextString(m) }
+func (*RegisterExecutorResp) ProtoMessage()               {}
+func (*RegisterExecutorResp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+
+func init() {
+	proto.RegisterType((*LoadTestReq)(nil), "LoadTestReq")
+	proto.RegisterType((*LoadTestResp)(nil), "LoadTestResp")
+	proto.RegisterType((*LoadTestResp_Preparing)(nil), "LoadTestResp.Preparing")
+	proto.RegisterType((*LoadTestResp_Started)(nil), "LoadTestResp.Started")
+	proto.RegisterType((*LoadTestResp_Finished)(nil), "LoadTestResp.Finished")
+	proto.RegisterType((*LoadTestResp_Errored)(nil), "LoadTestResp.Errored")
+	proto.RegisterType((*RegisterExecutorReq)(nil), "RegisterExecutorReq")
+	proto.RegisterType((*RegisterExecutorResp)(nil), "RegisterExecutorResp")
+}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
 
 // Client API for Scheduler service
 
@@ -224,9 +359,9 @@ func (x *schedulerLoadTestServer) Send(m *LoadTestResp) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Scheduler_RegisterExecutor_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _Scheduler_RegisterExecutor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(RegisterExecutorReq)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(SchedulerServer).RegisterExecutor(ctx, in)
@@ -252,4 +387,39 @@ var _Scheduler_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
+}
+
+var fileDescriptor0 = []byte{
+	// 488 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x53, 0x4d, 0x8f, 0xd3, 0x30,
+	0x10, 0x6d, 0xda, 0xa6, 0x6d, 0x26, 0x2d, 0x2c, 0xee, 0x96, 0x46, 0x01, 0x09, 0x14, 0x21, 0xb4,
+	0x12, 0x28, 0xa0, 0x72, 0xe0, 0xcc, 0x4a, 0x8b, 0x38, 0x70, 0x40, 0xbb, 0x9c, 0xb8, 0x58, 0x49,
+	0x3c, 0x6d, 0x23, 0xb2, 0xb1, 0x6b, 0x3b, 0x6a, 0x25, 0xae, 0x1c, 0xf9, 0x93, 0xfc, 0x13, 0x6c,
+	0x37, 0x85, 0xed, 0xd2, 0xa3, 0xdf, 0x7b, 0xf3, 0xf5, 0x66, 0x0c, 0x44, 0xe4, 0x6f, 0x54, 0xb1,
+	0x46, 0xd6, 0x54, 0x28, 0x53, 0x21, 0xb9, 0xe6, 0xc9, 0x6f, 0x0f, 0xc2, 0xcf, 0x3c, 0x63, 0x5f,
+	0x51, 0xe9, 0x6b, 0xdc, 0x90, 0x10, 0x7a, 0x8d, 0xac, 0x22, 0xef, 0xb9, 0x77, 0x11, 0x90, 0x07,
+	0x30, 0x50, 0x85, 0x2c, 0x85, 0x8e, 0xba, 0xee, 0x3d, 0x85, 0x70, 0xff, 0xa6, 0x75, 0x76, 0x8b,
+	0x51, 0xcf, 0x81, 0x67, 0x30, 0x92, 0x4d, 0x4d, 0x75, 0x69, 0x90, 0xbe, 0x41, 0x7c, 0x2b, 0xbb,
+	0xcd, 0x76, 0x74, 0xcb, 0xe5, 0x77, 0x94, 0x2a, 0x1a, 0x38, 0x70, 0x06, 0x93, 0x95, 0xe4, 0x5b,
+	0xbd, 0xa6, 0xcb, 0xac, 0xd0, 0x5c, 0x46, 0x23, 0x03, 0x7b, 0xe4, 0x09, 0x4c, 0x6d, 0x24, 0xcd,
+	0x51, 0x6f, 0x11, 0x6b, 0xba, 0xd7, 0x44, 0x81, 0x23, 0x5f, 0xc0, 0x53, 0xa5, 0x33, 0xa9, 0xcb,
+	0x7a, 0x45, 0x25, 0x6e, 0x1a, 0xd3, 0xa3, 0xa2, 0x02, 0x25, 0x55, 0x58, 0xf0, 0x9a, 0x45, 0xe0,
+	0x32, 0x3f, 0x83, 0xb9, 0x2d, 0x77, 0x4a, 0x10, 0x5a, 0x41, 0xf2, 0xab, 0x0b, 0xe3, 0x7f, 0x33,
+	0x2a, 0x41, 0x5e, 0x43, 0x20, 0x24, 0x8a, 0x4c, 0x9a, 0xc4, 0x6e, 0xd4, 0x70, 0x31, 0x4f, 0xef,
+	0x2a, 0xd2, 0x2f, 0x07, 0xfa, 0x53, 0x87, 0xbc, 0x04, 0xdf, 0x75, 0xe1, 0x4c, 0x08, 0x17, 0xb3,
+	0x63, 0xe5, 0x8d, 0xa5, 0x90, 0x19, 0xdd, 0x05, 0x0c, 0x96, 0x65, 0x5d, 0xaa, 0xb5, 0x33, 0x26,
+	0x5c, 0x3c, 0x3e, 0x16, 0x7e, 0x74, 0x9c, 0x53, 0x9a, 0x8c, 0x28, 0xa5, 0xf1, 0xa0, 0x7f, 0x2a,
+	0xe3, 0x95, 0xa5, 0xac, 0x2e, 0x8e, 0x21, 0xf8, 0xdb, 0x08, 0x99, 0x80, 0x5f, 0xf0, 0xa6, 0xd6,
+	0xae, 0x61, 0x3f, 0x0e, 0x60, 0xd8, 0x96, 0x8e, 0x01, 0x46, 0x87, 0xe4, 0x71, 0x04, 0xc3, 0x36,
+	0xde, 0x06, 0xec, 0xab, 0xb8, 0x65, 0x5e, 0x0e, 0xc1, 0x17, 0xeb, 0x4c, 0x61, 0xf2, 0x1e, 0xa6,
+	0xd7, 0xb8, 0x2a, 0x95, 0x46, 0x79, 0xb5, 0xc3, 0xa2, 0x31, 0xcb, 0xb0, 0x9b, 0x27, 0x00, 0x4c,
+	0x72, 0x51, 0xa1, 0xa6, 0x25, 0x73, 0x31, 0x3d, 0x32, 0x86, 0xbe, 0xe0, 0xed, 0xe4, 0xbd, 0xe4,
+	0xa7, 0x07, 0xe7, 0xff, 0x47, 0x1a, 0x3f, 0xcd, 0xc2, 0xcb, 0x7a, 0x59, 0x35, 0x3b, 0x9a, 0x31,
+	0xd6, 0xd6, 0x23, 0x73, 0x78, 0xd8, 0x82, 0x8d, 0x42, 0xe9, 0x0e, 0xa6, 0x7b, 0x8f, 0x10, 0x99,
+	0x52, 0xe6, 0x4a, 0x58, 0x7b, 0x49, 0x8f, 0x20, 0x68, 0x09, 0x96, 0x3b, 0x6b, 0x02, 0xdb, 0x54,
+	0x0b, 0x29, 0x55, 0x45, 0xbe, 0xc1, 0x46, 0x8b, 0x1f, 0x10, 0xdc, 0x1c, 0xae, 0x98, 0xbc, 0x82,
+	0xd1, 0xc1, 0x3c, 0x32, 0xbe, 0xe3, 0xe3, 0x26, 0x9e, 0x1c, 0xb9, 0x9a, 0x74, 0xde, 0x7a, 0xe4,
+	0x03, 0x9c, 0xdd, 0xef, 0x9f, 0x9c, 0xa7, 0x27, 0xcc, 0x88, 0x67, 0xe9, 0xa9, 0x41, 0x93, 0xce,
+	0x65, 0xff, 0x5b, 0x57, 0xe4, 0xf9, 0xc0, 0x7d, 0x9e, 0x77, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff,
+	0x9b, 0x7b, 0xd4, 0x78, 0x52, 0x03, 0x00, 0x00,
 }

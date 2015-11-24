@@ -125,7 +125,9 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 }
 
 func (s *Server) answerPreparing(srv pb.Scheduler_LoadTestServer, count int) error {
-	err := srv.Send(&pb.LoadTestResp{Preparing: &pb.LoadTestResp_Preparing{Count: int32(count)}})
+	preparing := &pb.LoadTestResp_Preparing_{}
+	preparing.Preparing = &pb.LoadTestResp_Preparing{Count: int32(count)}
+	err := srv.Send(&pb.LoadTestResp{Phase: preparing})
 	if err != nil {
 		logrus.WithError(err).Error("can't send message to client")
 	}
@@ -133,21 +135,24 @@ func (s *Server) answerPreparing(srv pb.Scheduler_LoadTestServer, count int) err
 }
 
 func (s *Server) answerStarted(srv pb.Scheduler_LoadTestServer) {
-	err := srv.Send(&pb.LoadTestResp{Start: &pb.LoadTestResp_Started{}})
+	started := &pb.LoadTestResp_Start{Start: &pb.LoadTestResp_Started{}}
+	err := srv.Send(&pb.LoadTestResp{Phase: started})
 	if err != nil {
 		logrus.WithError(err).Error("can't send message to client")
 	}
 }
 
 func (s *Server) answerFinished(srv pb.Scheduler_LoadTestServer) {
-	err := srv.Send(&pb.LoadTestResp{Finish: &pb.LoadTestResp_Finished{}})
+	finished := &pb.LoadTestResp_Finish{Finish: &pb.LoadTestResp_Finished{}}
+	err := srv.Send(&pb.LoadTestResp{Phase: finished})
 	if err != nil {
 		logrus.WithError(err).Error("can't send message to client")
 	}
 }
 
 func (s *Server) answerErrored(srv pb.Scheduler_LoadTestServer, ansErr error) {
-	err := srv.Send(&pb.LoadTestResp{Error: &pb.LoadTestResp_Errored{Error: ansErr.Error()}})
+	errored := &pb.LoadTestResp_Error{Error: &pb.LoadTestResp_Errored{Error: ansErr.Error()}}
+	err := srv.Send(&pb.LoadTestResp{Phase: errored})
 	if err != nil {
 		logrus.WithError(err).Error("can't send message to client")
 	}

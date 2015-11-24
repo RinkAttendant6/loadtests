@@ -65,8 +65,6 @@ var (
 	// ErrClientConnTimeout indicates that the connection could not be
 	// established or re-established within the specified timeout.
 	ErrClientConnTimeout = errors.New("grpc: timed out trying to connect")
-	// ErrTransientFailure indicates the connection failed due to a transient error.
-	ErrTransientFailure = errors.New("transient connection failure")
 	// minimum time to give a connection to complete
 	minConnectTimeout = 20 * time.Second
 )
@@ -145,18 +143,28 @@ func WithUserAgent(s string) DialOption {
 
 // Dial creates a client connection the given target.
 func Dial(target string, opts ...DialOption) (*ClientConn, error) {
-	var dopts dialOptions
+	cc := &ClientConn{
+		target: target,
+	}
 	for _, opt := range opts {
-		opt(&dopts)
+		opt(&cc.dopts)
 	}
-	if dopts.picker == nil {
-		p, err := newUnicastPicker(target, dopts)
-		if err != nil {
-			return nil, err
-		}
-		dopts.picker = p
+	if cc.dopts.codec == nil {
+		// Set the default codec.
+		cc.dopts.codec = protoCodec{}
 	}
-	return &ClientConn{dopts.picker}, nil
+	if cc.dopts.picker == nil {
+		cc.dopts.picker = &unicastPicker{}
+	}
+	if err := cc.dopts.picker.Init(cc); err != nil {
+		return nil, err
+	}
+	colonPos := strings.LastIndex(target, ":")
+	if colonPos == -1 {
+		colonPos = len(target)
+	}
+	cc.authority = target[:colonPos]
+	return cc, nil
 }
 
 // ConnectivityState indicates the state of a client connection.
@@ -194,31 +202,32 @@ func (s ConnectivityState) String() string {
 
 // ClientConn represents a client connection to an RPC service.
 type ClientConn struct {
-	picker Picker
+	target    string
+	authority string
+	dopts     dialOptions
 }
 
 // State returns the connectivity state of cc.
 // This is EXPERIMENTAL API.
 func (cc *ClientConn) State() ConnectivityState {
-	return cc.picker.State()
+	return cc.dopts.picker.State()
 }
 
 // WaitForStateChange blocks until the state changes to something other than the sourceState
 // or timeout fires on cc. It returns false if timeout fires, and true otherwise.
 // This is EXPERIMENTAL API.
 func (cc *ClientConn) WaitForStateChange(timeout time.Duration, sourceState ConnectivityState) bool {
-	return cc.picker.WaitForStateChange(timeout, sourceState)
+	return cc.dopts.picker.WaitForStateChange(timeout, sourceState)
 }
 
 // Close starts to tear down the ClientConn.
 func (cc *ClientConn) Close() error {
-	return cc.picker.Close()
+	return cc.dopts.picker.Close()
 }
 
 // Conn is a client connection to a single destination.
 type Conn struct {
 	target       string
-	authority    string
 	dopts        dialOptions
 	shutdownChan chan struct{}
 	events       trace.EventLog
@@ -233,17 +242,17 @@ type Conn struct {
 }
 
 // NewConn creates a Conn.
-func NewConn(target string, dopts dialOptions) (*Conn, error) {
-	if target == "" {
+func NewConn(cc *ClientConn) (*Conn, error) {
+	if cc.target == "" {
 		return nil, ErrUnspecTarget
 	}
 	c := &Conn{
-		target:       target,
-		dopts:        dopts,
+		target:       cc.target,
+		dopts:        cc.dopts,
 		shutdownChan: make(chan struct{}),
 	}
 	if EnableTracing {
-		c.events = trace.NewEventLog("grpc.ClientConn", target)
+		c.events = trace.NewEventLog("grpc.ClientConn", c.target)
 	}
 	if !c.dopts.insecure {
 		var ok bool
@@ -263,15 +272,6 @@ func NewConn(target string, dopts dialOptions) (*Conn, error) {
 			}
 		}
 	}
-	colonPos := strings.LastIndex(target, ":")
-	if colonPos == -1 {
-		colonPos = len(target)
-	}
-	c.authority = target[:colonPos]
-	if c.dopts.codec == nil {
-		// Set the default codec.
-		c.dopts.codec = protoCodec{}
-	}
 	c.stateCV = sync.NewCond(&c.mu)
 	if c.dopts.block {
 		if err := c.resetTransport(false); err != nil {
@@ -284,11 +284,11 @@ func NewConn(target string, dopts dialOptions) (*Conn, error) {
 		// Start a goroutine connecting to the server asynchronously.
 		go func() {
 			if err := c.resetTransport(false); err != nil {
-				grpclog.Printf("Failed to dial %s: %v; please retry.", target, err)
+				grpclog.Printf("Failed to dial %s: %v; please retry.", c.target, err)
 				c.Close()
 				return
 			}
-			go c.transportMonitor()
+			c.transportMonitor()
 		}()
 	}
 	return c, nil
@@ -359,6 +359,7 @@ func (cc *Conn) resetTransport(closeTransport bool) error {
 		cc.mu.Lock()
 		cc.printf("connecting")
 		if cc.state == Shutdown {
+			// cc.Close() has been invoked.
 			cc.mu.Unlock()
 			return ErrClientConnClosing
 		}
@@ -393,6 +394,11 @@ func (cc *Conn) resetTransport(closeTransport bool) error {
 		newTransport, err := transport.NewClientTransport(cc.target, &copts)
 		if err != nil {
 			cc.mu.Lock()
+			if cc.state == Shutdown {
+				// cc.Close() has been invoked.
+				cc.mu.Unlock()
+				return ErrClientConnClosing
+			}
 			cc.errorf("transient failure: %v", err)
 			cc.state = TransientFailure
 			cc.stateCV.Broadcast()
@@ -450,6 +456,11 @@ func (cc *Conn) transportMonitor() {
 			return
 		case <-cc.transport.Error():
 			cc.mu.Lock()
+			if cc.state == Shutdown {
+				// cc.Close() has been invoked.
+				cc.mu.Unlock()
+				return
+			}
 			cc.state = TransientFailure
 			cc.stateCV.Broadcast()
 			cc.mu.Unlock()
@@ -466,7 +477,7 @@ func (cc *Conn) transportMonitor() {
 	}
 }
 
-// Wait blocks until i) the new transport is up or ii) ctx is done or iii)
+// Wait blocks until i) the new transport is up or ii) ctx is done or iii) cc is closed.
 func (cc *Conn) Wait(ctx context.Context) (transport.ClientTransport, error) {
 	for {
 		cc.mu.Lock()
@@ -477,11 +488,6 @@ func (cc *Conn) Wait(ctx context.Context) (transport.ClientTransport, error) {
 		case cc.state == Ready:
 			cc.mu.Unlock()
 			return cc.transport, nil
-		case cc.state == TransientFailure:
-			cc.mu.Unlock()
-			// Break out so that the caller gets chance to pick another transport to
-			// perform rpc instead of sticking to this transport.
-			return nil, ErrTransientFailure
 		default:
 			ready := cc.ready
 			if ready == nil {
