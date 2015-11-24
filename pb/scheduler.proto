@@ -2,6 +2,8 @@ syntax = "proto3";
 
 option go_package = "pb";
 
+package loadtests;
+
 service Scheduler {
     rpc LoadTest(LoadTestReq) returns (stream LoadTestResp) {};
     rpc RegisterExecutor(RegisterExecutorReq) returns (RegisterExecutorResp) {};
