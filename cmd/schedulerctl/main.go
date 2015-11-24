@@ -32,7 +32,7 @@ var (
 	addrFlag = cli.StringFlag{Name: "addr", Usage: "address where the scheduler service can be reached"}
 	tgtFlag  = cli.StringFlag{Name: "tgt", Usage: "target URL to execute the load test against"}
 
-	scriptNameFlag    = cli.StringFlag{Name: "script.name", Value: "12345", Usage: "name of the script"}
+	scriptNameFlag    = cli.StringFlag{Name: "script.name", Usage: "name of the script"}
 	scriptFileFlag    = cli.StringFlag{Name: "script.file", Usage: "if specified, the file where the source of the script can be found. Otherwise uses stdin"}
 	runTimeFlag       = cli.DurationFlag{Name: "duration", Value: time.Minute, Usage: "how long to perform the load test for"}
 	maxExecPerSecFlag = cli.IntFlag{Name: "max.exec.ps", Value: 100, Usage: "number of executions per second"}
@@ -83,6 +83,9 @@ func newApp() *cli.App {
 	}
 
 	app.Action = func(ctx *cli.Context) {
+		if ctx.GlobalString(scriptNameFlag.Name) == "" {
+			log.Fatalf("param %q required to run script", scriptNameFlag.Name)
+		}
 		script, err := readFileOrStdin(ctx, scriptFileFlag)
 		if err != nil {
 			log.Fatal(err)
