@@ -14,6 +14,7 @@ message StatusMessage {
 message CommandMessage {
     string       command        = 1;
     ScriptParams script_params  = 2;
+    string       script_config  = 3;
 }
 
 message ScriptParams {

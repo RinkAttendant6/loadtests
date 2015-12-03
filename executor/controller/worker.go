@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"log"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 type worker struct {
 	WorkerId   int32
 	Persister  Persister
+	Config     string
 	Command    *executorGRPC.ScriptParams
 	Wait       *sync.WaitGroup
 	JobChannel <-chan struct{}
@@ -51,6 +53,19 @@ func (w *worker) execute() {
 				// did not compile it would be reported to the user before this
 				log.Printf("Worker %d, Error creating lua script: %v", w.WorkerId, err)
 				return
+			}
+			// Add a config if it exists
+			if w.Config != "" {
+				var f interface{}
+				if err = json.Unmarshal([]byte(w.Config), &f); err != nil {
+					// This should not occur, it would have been checked in controller
+					log.Printf("Worker %d, Error unmarshalling: %v", w.WorkerId, err)
+					return
+				}
+				if err = prog.AddConfig(f); err != nil {
+					log.Printf("Worker %d, Error addding Config to lua script: %v", w.WorkerId, err)
+					return
+				}
 			}
 			err = prog.Execute(context.Background())
 

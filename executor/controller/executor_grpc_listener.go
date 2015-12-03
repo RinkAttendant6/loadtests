@@ -85,7 +85,7 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 	}
 
 	log.Printf("Received command: %v", in)
-	executorController := &Controller{Command: in.ScriptParams, Server: server, Clock: s.clock}
+	executorController := &Controller{Command: in.ScriptParams, Server: server, Clock: s.clock, Config: in.ScriptConfig}
 
 	go listenForHalt(halt, &halted, &serverErr, server)
 

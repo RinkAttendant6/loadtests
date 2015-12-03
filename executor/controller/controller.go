@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"log"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 // Controller this will read what IP to ping from a file
 type Controller struct {
 	Command *executorGRPC.ScriptParams
+	Config  string
 	Server  executorGRPC.Commander_ExecuteCommandServer
 	Clock   clock.Clock
 }
@@ -30,6 +32,15 @@ func (f *Controller) RunInstructions(persister Persister, halt chan struct{}) er
 	_, err := engine.Lua(script)
 	if err != nil {
 		return err
+	}
+	if f.Config != "" {
+		var j interface{}
+		if err = json.Unmarshal([]byte(f.Config), &j); err != nil {
+			return err
+		}
+		if err = engine.VerifyConfig(j); err != nil {
+			return err
+		}
 	}
 	f.runScript(persister, halt)
 	return nil
@@ -48,6 +59,7 @@ func (f *Controller) runScript(persister Persister, halt chan struct{}) {
 			WorkerId:   i,
 			Persister:  persister,
 			Command:    f.Command,
+			Config:     f.Config,
 			Wait:       &wg,
 			JobChannel: jobChannel,
 			Done:       workerDone,

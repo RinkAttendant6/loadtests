@@ -23,18 +23,14 @@ import (
 
 const (
 	goodLogScript = `step.first_step = function()
-    info("hello world")
-end
-
-step.second_step = function()
-    fatal("oh you're still there")
+    info(test)
 end
 `
 	goodGetScript = `step.first_step = function()
     get(%q)
 end
 `
-	badScript = `testtesttesttest test`
+	badScript = `testtesttesttest`
 
 	defaultPort   = 50053
 	schedulerIP   = "localhost:50048"
@@ -459,7 +455,7 @@ func sendMesage(message *exgrpc.ScriptParams, port int) (exgrpc.Commander_Execut
 	if err != nil {
 		return nil, nil, err
 	}
-	err = client.Send(&exgrpc.CommandMessage{Command: "Run", ScriptParams: message})
+	err = client.Send(&exgrpc.CommandMessage{Command: "Run", ScriptParams: message, ScriptConfig: "{\"second\":\"vs\",\"test\":\"test_config\",\"last\":142}"})
 	return client, conn, err
 }
 

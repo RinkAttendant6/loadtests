@@ -41,6 +41,7 @@ func (*StatusMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []i
 type CommandMessage struct {
 	Command      string        `protobuf:"bytes,1,opt,name=command" json:"command,omitempty"`
 	ScriptParams *ScriptParams `protobuf:"bytes,2,opt,name=script_params" json:"script_params,omitempty"`
+	ScriptConfig string        `protobuf:"bytes,3,opt,name=script_config" json:"script_config,omitempty"`
 }
 
 func (m *CommandMessage) Reset()                    { *m = CommandMessage{} }

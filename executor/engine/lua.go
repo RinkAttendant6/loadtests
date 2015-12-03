@@ -91,6 +91,53 @@ func Lua(source io.Reader, opts ...LuaOption) (*LuaProgram, error) {
 	return prgm, nil
 }
 
+func VerifyConfig(json interface{}) error {
+	jsonData := json.(map[string]interface{})
+	for _, val := range jsonData {
+		switch valType := val.(type) {
+		case string:
+		case int:
+		case float64:
+		case bool:
+		case nil:
+			break
+		default:
+			return fmt.Errorf("Invalid type for lua config file: %v", valType)
+		}
+	}
+	return nil
+}
+
+func (prgm *LuaProgram) AddConfig(json interface{}) error {
+	if err := VerifyConfig(json); err != nil {
+		return err
+	}
+	vm := prgm.vm
+	jsonData := json.(map[string]interface{})
+	for key, val := range jsonData {
+		switch valType := val.(type) {
+		case string:
+			vm.PushString(fmt.Sprintf("%v", val))
+			vm.SetGlobal(key)
+		case int:
+			vm.PushString(fmt.Sprintf("%v", val))
+			vm.SetGlobal(key)
+		case float64:
+			vm.PushString(fmt.Sprintf("%v", val))
+			vm.SetGlobal(key)
+		case bool:
+			vm.PushString(fmt.Sprintf("%v", val))
+			vm.SetGlobal(key)
+		case nil:
+			vm.PushNil()
+			vm.SetGlobal(key)
+		default:
+			return fmt.Errorf("Invalid type for lua config file: %v", valType)
+		}
+	}
+	return nil
+}
+
 func (prgm *LuaProgram) Execute(ctx context.Context) error {
 
 	runNext := true
