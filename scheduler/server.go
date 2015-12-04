@@ -70,7 +70,10 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 	needExecutors := int(math.Ceil(
 		float64(req.MaxRequestsPerSecond) / float64(s.cfg.MaxExecPSPerExecutor),
 	))
-
+	if req.StartingRequestsPerSecond/int32(needExecutors) <= 10 {
+		return fmt.Errorf("You need more than %d starting requests per second to deal with %d max request per second",
+			needExecutors*11, req.MaxRequestsPerSecond)
+	}
 	if err := s.answerPreparing(srv, needExecutors); err != nil {
 		return err
 	}
@@ -92,7 +95,7 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		req.Script,
 		req.ScriptName,
 		req.RunTime,
-		req.MaxWorkers,
+		int32(s.cfg.MaxWorkerPerExecutor),
 		req.GrowthFactor,
 		req.TimeBetweenGrowth,
 		req.StartingRequestsPerSecond,

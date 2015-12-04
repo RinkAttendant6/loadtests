@@ -31,8 +31,8 @@ func main() {
 		dropletImageSlug = flag.String("droplet.image", "coreos-stable", "DigitalOcean image to boot for droplets")
 
 		maxWaitExecutorOnline = flag.Duration("max.wait.executor.online", 2*time.Minute, "max duration to wait for before giving up on an executor to register itself")
-		maxWorkerPerExecutor  = flag.Int("max.worker.per.executor", 1000, "max number of threads scheduled on a single executor")
-		maxExecPSPerExecutor  = flag.Int("max.rps.per.executor", 100, "max number of requests per second requests of a single executor")
+		maxWorkerPerExecutor  = flag.Int("max.worker.per.executor", 100, "max number of threads scheduled on a single executor")
+		maxExecPSPerExecutor  = flag.Int("max.rps.per.executor", 500, "max number of requests per second requests of a single executor")
 
 		influxAddr     = flag.String("influx.addr", "", "address where the influx DB can be found")
 		influxUsername = flag.String("influx.username", "", "username to use when connecting to influx DB")

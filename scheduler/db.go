@@ -302,7 +302,7 @@ func (e *executors) executeCommand(
 				Script:                    script,
 				ScriptId:                  scriptID,
 				RunTime:                   runtime,
-				MaxWorkers:                maxWorkers / int32(len(e.executors)),
+				MaxWorkers:                maxWorkers,
 				GrowthFactor:              growthFactor,
 				TimeBetweenGrowth:         timeBetweenGrowth,
 				StartingRequestsPerSecond: startingRPS / int32(len(e.executors)),
