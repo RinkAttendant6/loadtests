@@ -40,6 +40,7 @@ type LoadTestReq struct {
 	TimeBetweenGrowth         float64 `protobuf:"fixed64,9,opt,name=time_between_growth" json:"time_between_growth,omitempty"`
 	StartingRequestsPerSecond int32   `protobuf:"varint,10,opt,name=starting_requests_per_second" json:"starting_requests_per_second,omitempty"`
 	MaxRequestsPerSecond      int32   `protobuf:"varint,11,opt,name=max_requests_per_second" json:"max_requests_per_second,omitempty"`
+	ScriptConfig              string  `protobuf:"bytes,12,opt,name=script_config" json:"script_config,omitempty"`
 }
 
 func (m *LoadTestReq) Reset()                    { *m = LoadTestReq{} }

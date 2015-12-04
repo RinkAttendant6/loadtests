@@ -34,6 +34,7 @@ var (
 
 	scriptNameFlag    = cli.StringFlag{Name: "script.name", Usage: "name of the script"}
 	scriptFileFlag    = cli.StringFlag{Name: "script.file", Usage: "if specified, the file where the source of the script can be found. Otherwise uses stdin"}
+	scriptConfigFlag  = cli.StringFlag{Name: "script.config", Usage: "if specified, the file where the source of the config can be found.", Value: ""}
 	runTimeFlag       = cli.DurationFlag{Name: "duration", Value: time.Minute, Usage: "how long to perform the load test for"}
 	maxExecPerSecFlag = cli.IntFlag{Name: "max.exec.ps", Value: 100, Usage: "number of executions per second"}
 	maxWorkersFlag    = cli.IntFlag{Name: "max.workers", Value: 100, Usage: "number of execution threads"}
@@ -65,6 +66,7 @@ func newApp() *cli.App {
 		tgtFlag,
 		scriptNameFlag,
 		scriptFileFlag,
+		scriptConfigFlag,
 		runTimeFlag,
 		maxExecPerSecFlag,
 		maxWorkersFlag,
@@ -90,6 +92,16 @@ func newApp() *cli.App {
 		if err != nil {
 			log.Fatal(err)
 		}
+		scriptConfig := ""
+		fd, err := os.Open(ctx.GlobalString(scriptConfigFlag.Name))
+		if err == nil {
+			btyes, err := ioutil.ReadAll(fd)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fd.Close()
+			scriptConfig = string(btyes)
+		}
 		in := &pb.LoadTestReq{
 			Url:                       ctx.GlobalString(tgtFlag.Name),
 			ScriptName:                ctx.GlobalString(scriptNameFlag.Name),
@@ -100,6 +112,7 @@ func newApp() *cli.App {
 			GrowthFactor:              ctx.Float64(growthFactorFlag.Name),
 			TimeBetweenGrowth:         ctx.Duration(timeBetweenGrowthFlag.Name).Seconds(),
 			StartingRequestsPerSecond: int32(ctx.GlobalInt(maxExecPerSecFlag.Name)),
+			ScriptConfig:              scriptConfig,
 		}
 		if in.StartingRequestsPerSecond == 0 {
 			in.StartingRequestsPerSecond = in.MaxRequestsPerSecond

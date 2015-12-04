@@ -91,6 +91,7 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		req.TimeBetweenGrowth,
 		req.StartingRequestsPerSecond,
 		req.MaxRequestsPerSecond,
+		req.ScriptConfig,
 	)
 	if err != nil {
 		logrus.WithError(err).Error("sending command")

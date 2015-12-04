@@ -19,6 +19,7 @@ message LoadTestReq {
     double time_between_growth          = 9;
     int32  starting_requests_per_second = 10;
     int32  max_requests_per_second      = 11;
+    string script_config                = 12;
 }
 
 message LoadTestResp {

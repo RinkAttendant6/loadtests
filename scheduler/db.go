@@ -273,6 +273,7 @@ func (e *executors) executeCommand(
 	timeBetweenGrowth float64,
 	startingRPS int32,
 	maxRPS int32,
+	scriptConfig string,
 ) error {
 	return e.each(parent, func(ctx context.Context, exec *executor) error {
 		ll := logrus.WithFields(logrus.Fields{
@@ -307,6 +308,7 @@ func (e *executors) executeCommand(
 				StartingRequestsPerSecond: startingRPS / int32(len(e.executors)),
 				MaxRequestsPerSecond:      maxRPS / int32(len(e.executors)),
 			},
+			ScriptConfig: scriptConfig,
 		}
 		ll = ll.WithFields(logrus.Fields{
 			"script_params": in.GetScriptParams(),
