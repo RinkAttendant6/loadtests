@@ -1,13 +1,16 @@
 package scheduler
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/benbjohnson/clock"
 	"github.com/digitalocean/godo"
+	"github.com/lgpeterson/loadtests/executor/engine"
 	"github.com/lgpeterson/loadtests/scheduler/pb"
 	"golang.org/x/net/context"
 )
@@ -61,6 +64,9 @@ func (s *Server) RegisterExecutor(ctx context.Context, req *pb.RegisterExecutorR
 func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) error {
 	ctx := srv.Context()
 
+	if err := verifyScript(req); err != nil {
+		return err
+	}
 	needExecutors := int(math.Ceil(
 		float64(req.MaxRequestsPerSecond) / float64(s.cfg.MaxExecPSPerExecutor),
 	))
@@ -122,6 +128,24 @@ func (s *Server) LoadTest(req *pb.LoadTestReq, srv pb.Scheduler_LoadTestServer) 
 		s.answerErrored(srv, fmt.Errorf("forcing destruction of executors"))
 	}
 
+	return nil
+}
+
+func verifyScript(req *pb.LoadTestReq) error {
+	script := strings.NewReader(req.Script)
+	_, err := engine.Lua(script)
+	if err != nil {
+		return err
+	}
+	if req.ScriptConfig != "" {
+		cfg := make(map[string]interface{})
+		if err = json.Unmarshal([]byte(req.ScriptConfig), &cfg); err != nil {
+			return err
+		}
+		if err = engine.VerifyConfig(cfg); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

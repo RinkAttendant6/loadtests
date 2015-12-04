@@ -34,11 +34,11 @@ func (f *Controller) RunInstructions(persister Persister, halt chan struct{}) er
 		return err
 	}
 	if f.Config != "" {
-		var j interface{}
-		if err = json.Unmarshal([]byte(f.Config), &j); err != nil {
+		cfg := make(map[string]interface{})
+		if err = json.Unmarshal([]byte(f.Config), &cfg); err != nil {
 			return err
 		}
-		if err = engine.VerifyConfig(j); err != nil {
+		if err = engine.VerifyConfig(cfg); err != nil {
 			return err
 		}
 	}

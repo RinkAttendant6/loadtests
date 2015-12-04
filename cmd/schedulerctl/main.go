@@ -92,16 +92,11 @@ func newApp() *cli.App {
 		if err != nil {
 			log.Fatal(err)
 		}
-		scriptConfig := ""
-		fd, err := os.Open(ctx.GlobalString(scriptConfigFlag.Name))
-		if err == nil {
-			btyes, err := ioutil.ReadAll(fd)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fd.Close()
-			scriptConfig = string(btyes)
+		scriptConfig, err := readFileIfExists(ctx, scriptConfigFlag)
+		if err != nil {
+			log.Fatal(err)
 		}
+
 		in := &pb.LoadTestReq{
 			Url:                       ctx.GlobalString(tgtFlag.Name),
 			ScriptName:                ctx.GlobalString(scriptNameFlag.Name),
@@ -112,7 +107,7 @@ func newApp() *cli.App {
 			GrowthFactor:              ctx.Float64(growthFactorFlag.Name),
 			TimeBetweenGrowth:         ctx.Duration(timeBetweenGrowthFlag.Name).Seconds(),
 			StartingRequestsPerSecond: int32(ctx.GlobalInt(maxExecPerSecFlag.Name)),
-			ScriptConfig:              scriptConfig,
+			ScriptConfig:              string(scriptConfig),
 		}
 		if in.StartingRequestsPerSecond == 0 {
 			in.StartingRequestsPerSecond = in.MaxRequestsPerSecond
@@ -173,6 +168,18 @@ func readFileOrStdin(ctx *cli.Context, fileFlag cli.StringFlag) ([]byte, error) 
 		defer waiting.Stop()
 		return ioutil.ReadAll(os.Stdin)
 	}
+	return readFile(filename)
+}
+
+func readFileIfExists(ctx *cli.Context, fileFlag cli.StringFlag) ([]byte, error) {
+	filename := ctx.GlobalString(fileFlag.Name)
+	if filename != "" {
+		return readFile(filename)
+	}
+	return make([]byte, 0), nil
+}
+
+func readFile(filename string) ([]byte, error) {
 	fd, err := os.Open(filename)
 	if err != nil {
 		return nil, err
