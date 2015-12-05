@@ -25,6 +25,7 @@ func (w *worker) execute() {
 	w.Wait.Add(1)
 	defer log.Printf("Worker: %d closed", w.WorkerId)
 	defer w.Wait.Done()
+	testNum := 0
 	for {
 		select {
 		case <-w.Done:
@@ -39,6 +40,9 @@ func (w *worker) execute() {
 				return
 			default:
 			}
+			w.Metrics.TestId = testNum
+			testNum++
+
 			scriptReader := strings.NewReader(w.Command.Script)
 			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(w.Metrics))
 			if err != nil {

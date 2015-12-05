@@ -28,7 +28,7 @@ type Persister interface {
 }
 
 // RunInstructions will get the IP from the file it found and send it to the pinger
-func (f *Controller) RunInstructions(persister Persister, halt chan struct{}) error {
+func (f *Controller) RunInstructions(persister Persister, dropletId int, halt chan struct{}) error {
 	script := strings.NewReader(f.Command.Script)
 	_, err := engine.Lua(script)
 	if err != nil {
@@ -43,15 +43,24 @@ func (f *Controller) RunInstructions(persister Persister, halt chan struct{}) er
 			return err
 		}
 	}
-	metrics, err := f.runScript(halt)
+	metrics, err := f.runScript(dropletId, halt)
 	if err != nil {
 		return err
 	}
-
-	return persister.Persist(metrics)
+	numTries := 0
+	for {
+		err := persister.Persist(metrics)
+		if err == nil {
+			return nil
+		}
+		log.Println("Failed presist attempt. number: %d err: %v", numTries, err)
+		if numTries > 10 {
+			return err
+		}
+	}
 }
 
-func (f *Controller) runScript(halt chan struct{}) ([]client.BatchPoints, error) {
+func (f *Controller) runScript(dropletId int, halt chan struct{}) ([]client.BatchPoints, error) {
 	jobChannel := make(chan struct{}, f.Command.MaxRequestsPerSecond)
 	done := make(chan struct{})
 	var completeChannels []chan struct{}
@@ -61,7 +70,7 @@ func (f *Controller) runScript(halt chan struct{}) ([]client.BatchPoints, error)
 	// Create all the workers that will listen for jobs
 	for i := int32(0); i < f.Command.MaxWorkers; i++ {
 		workerDone := make(chan struct{})
-		metrics, err := NewMetricsGatherer(f.Command.ScriptId)
+		metrics, err := NewMetricsGatherer(f.Command.ScriptId, dropletId, i)
 		if err != nil {
 			return nil, err
 		}

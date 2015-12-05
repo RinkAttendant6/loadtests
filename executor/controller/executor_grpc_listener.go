@@ -17,6 +17,7 @@ import (
 type GRPCExecutorStarter struct {
 	persister Persister
 	clock     clock.Clock
+	dropletId int
 }
 
 // NewGRPCExecutorStarter this creates a new GRPCExecutorStarter and sets the directory to look in
@@ -29,6 +30,7 @@ func NewGRPCExecutorStarter(persister Persister, schedulerAddr string, port int,
 	executorStarter := &GRPCExecutorStarter{
 		persister: persister,
 		clock:     clock,
+		dropletId: dropletId,
 	}
 	s := grpc.NewServer()
 	executor.RegisterCommanderServer(s, executorStarter)
@@ -89,7 +91,7 @@ func (s *GRPCExecutorStarter) ExecuteCommand(server executor.Commander_ExecuteCo
 
 	go listenForHalt(halt, &halted, &serverErr, server)
 
-	err = executorController.RunInstructions(s.persister, halt)
+	err = executorController.RunInstructions(s.persister, s.dropletId, halt)
 
 	if err != nil {
 		log.Printf("Error executing: %v", err)
