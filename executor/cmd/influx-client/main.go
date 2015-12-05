@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	client "github.com/influxdb/influxdb/client/v2"
 	"github.com/lgpeterson/loadtests/executor/controller"
 	"github.com/lgpeterson/loadtests/executor/persister"
 )
@@ -34,7 +35,9 @@ func testIflux(ip string) {
 	if err != nil {
 		log.Fatalf("Error creating influx persistor: %v", err)
 	}
-	err = persister.Persist(metrics)
+	bps := make([]client.BatchPoints, 1)
+	bps[0] = metrics.BatchPoints
+	err = persister.Persist(bps)
 	if err != nil {
 		log.Fatalf("Error with influx persistor: %v", err)
 	}

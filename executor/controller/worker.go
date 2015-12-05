@@ -13,9 +13,9 @@ import (
 
 type worker struct {
 	WorkerId   int32
-	Persister  Persister
 	Config     string
 	Command    *executorGRPC.ScriptParams
+	Metrics    *MetricsGatherer
 	Wait       *sync.WaitGroup
 	JobChannel <-chan struct{}
 	Done       <-chan struct{}
@@ -40,14 +40,7 @@ func (w *worker) execute() {
 			default:
 			}
 			scriptReader := strings.NewReader(w.Command.Script)
-			metrics, err := NewMetricsGatherer(w.Command.ScriptId)
-			if err != nil {
-				// This should not happen, because there are no parameters to NewMetricsGatherer
-				// But I should log it for testing/debugging purposes
-				log.Printf("Worker %d, Error creating metrics gatherer: %v", w.WorkerId, err)
-				return
-			}
-			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(metrics))
+			prog, err := engine.Lua(scriptReader, engine.SetMetricReporter(w.Metrics))
 			if err != nil {
 				// This should not be because the script did not compile, if it
 				// did not compile it would be reported to the user before this
@@ -71,15 +64,8 @@ func (w *worker) execute() {
 
 			if err != nil {
 				// I assume I can keep going if the lua script encoutered an error
-				metrics.AddLuaError(err)
-			}
-
-			err = w.Persister.Persist(metrics)
-			if err != nil {
-				// I assume I can keep going if the lua script encoutered an error
-				log.Printf("Worker %d, Error saving output of lua script: %v", w.WorkerId, err)
+				w.Metrics.AddLuaError(err)
 			}
 		}
-
 	}
 }

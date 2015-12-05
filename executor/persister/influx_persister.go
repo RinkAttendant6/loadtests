@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	client "github.com/influxdb/influxdb/client/v2"
-	"github.com/lgpeterson/loadtests/executor/controller"
 )
 
 // InfluxPersister is a persister that will save the output to a file
@@ -75,11 +74,15 @@ func (f *InfluxPersister) DropData(tableName string) error {
 }
 
 // Persist saves the data to a file with public permissions
-func (f *InfluxPersister) Persist(metrics *controller.MetricsGatherer) error {
-	bps := metrics.BatchPoints
-	bps.SetDatabase(f.database)
-	err := f.client.Write(bps)
-	return err
+func (f *InfluxPersister) Persist(bps []client.BatchPoints) error {
+	var actualErr error
+	for _, bp := range bps {
+		bp.SetDatabase(f.database)
+		if err := f.client.Write(bp); err != nil {
+			actualErr = err
+		}
+	}
+	return actualErr
 }
 
 func parseUrl(url string, useSsl bool) string {

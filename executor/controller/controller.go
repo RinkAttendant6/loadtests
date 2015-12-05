@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
+	client "github.com/influxdb/influxdb/client/v2"
 	"github.com/lgpeterson/loadtests/executor/engine"
 	"github.com/lgpeterson/loadtests/executor/pb"
 )
@@ -22,7 +23,7 @@ type Controller struct {
 
 // Persister is an interface to save whatever data is grabbed from the executor
 type Persister interface {
-	Persist(metrics *MetricsGatherer) error
+	Persist(bps []client.BatchPoints) error
 	SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error
 }
 
@@ -42,29 +43,39 @@ func (f *Controller) RunInstructions(persister Persister, halt chan struct{}) er
 			return err
 		}
 	}
-	f.runScript(persister, halt)
-	return nil
+	metrics, err := f.runScript(halt)
+	if err != nil {
+		return err
+	}
+
+	return persister.Persist(metrics)
 }
 
-func (f *Controller) runScript(persister Persister, halt chan struct{}) {
+func (f *Controller) runScript(halt chan struct{}) ([]client.BatchPoints, error) {
 	jobChannel := make(chan struct{}, f.Command.MaxRequestsPerSecond)
 	done := make(chan struct{})
 	var completeChannels []chan struct{}
+	var metricsList []*MetricsGatherer
 	var wg sync.WaitGroup
 
 	// Create all the workers that will listen for jobs
 	for i := int32(0); i < f.Command.MaxWorkers; i++ {
 		workerDone := make(chan struct{})
+		metrics, err := NewMetricsGatherer(f.Command.ScriptId)
+		if err != nil {
+			return nil, err
+		}
 		w := &worker{
 			WorkerId:   i,
-			Persister:  persister,
 			Command:    f.Command,
 			Config:     f.Config,
+			Metrics:    metrics,
 			Wait:       &wg,
 			JobChannel: jobChannel,
 			Done:       workerDone,
 		}
 		completeChannels = append(completeChannels, workerDone)
+		metricsList = append(metricsList, metrics)
 		go w.execute()
 	}
 
@@ -92,12 +103,11 @@ func (f *Controller) runScript(persister Persister, halt chan struct{}) {
 		select {
 		case <-halt:
 			close(jobChannel)
-			stopWorkers(completeChannels, &wg)
-			return
+			return stopWorkers(completeChannels, metricsList, &wg), nil
 		case <-done:
 			close(jobChannel)
-			stopWorkers(completeChannels, &wg)
-			return
+			return stopWorkers(completeChannels, metricsList, &wg), nil
+
 		case <-ticker.C:
 			for i := 1; i < iterations; i++ {
 				select {
@@ -122,12 +132,17 @@ func (f *Controller) runScript(persister Persister, halt chan struct{}) {
 
 }
 
-func stopWorkers(completeChannels []chan struct{}, wg *sync.WaitGroup) {
+func stopWorkers(completeChannels []chan struct{}, metricsList []*MetricsGatherer, wg *sync.WaitGroup) []client.BatchPoints {
 	log.Println("Ending load test")
 	for _, workerDoneChannel := range completeChannels {
 		close(workerDoneChannel)
 	}
 	wg.Wait()
+	var bps []client.BatchPoints
+	for _, metric := range metricsList {
+		bps = append(bps, metric.BatchPoints)
+	}
+	return bps
 }
 
 func getNumberOfIterations(tickTimer time.Duration, requestsPerSecond int) int {
