@@ -74,15 +74,10 @@ func (f *InfluxPersister) DropData(tableName string) error {
 }
 
 // Persist saves the data to a file with public permissions
-func (f *InfluxPersister) Persist(bps []client.BatchPoints) error {
-	var actualErr error
-	for _, bp := range bps {
-		bp.SetDatabase(f.database)
-		if err := f.client.Write(bp); err != nil {
-			actualErr = err
-		}
-	}
-	return actualErr
+func (f *InfluxPersister) Persist(bps client.BatchPoints) error {
+	bps.SetDatabase(f.database)
+	err := f.client.Write(bps)
+	return err
 }
 
 func parseUrl(url string, useSsl bool) string {

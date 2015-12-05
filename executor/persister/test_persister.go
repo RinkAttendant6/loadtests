@@ -2,6 +2,7 @@ package persister
 
 import (
 	"fmt"
+	"log"
 
 	client "github.com/influxdb/influxdb/client/v2"
 )
@@ -13,17 +14,16 @@ type TestPersister struct {
 }
 
 // Persist TestPersister the data to a file with public permissions
-func (f *TestPersister) Persist(bps []client.BatchPoints) error {
-	for _, bp := range bps {
-		for _, point := range bp.Points() {
-			if point.Name() == "GetRequestTable" {
-				//fmt.Printf("%v\n", point.Fields())
-				data := fmt.Sprintf("%s: %s %d", point.Fields()["id"], point.Fields()["url"], point.Fields()["code"])
-				f.GetRequestContent = append(f.GetRequestContent, data)
-			} else {
-				data := fmt.Sprintf("%s: %v", point.Fields()["id"], point.Fields())
-				f.LoggingContent = append(f.LoggingContent, data)
-			}
+func (f *TestPersister) Persist(bps client.BatchPoints) error {
+	log.Println(bps)
+	for _, point := range bps.Points() {
+		if point.Name() == "GetRequestTable" {
+			//fmt.Printf("%v\n", point.Fields())
+			data := fmt.Sprintf("%s: %s %d", point.Fields()["id"], point.Fields()["url"], point.Fields()["code"])
+			f.GetRequestContent = append(f.GetRequestContent, data)
+		} else {
+			data := fmt.Sprintf("%s: %v", point.Fields()["id"], point.Fields())
+			f.LoggingContent = append(f.LoggingContent, data)
 		}
 	}
 

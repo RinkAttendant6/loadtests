@@ -23,7 +23,7 @@ type Controller struct {
 
 // Persister is an interface to save whatever data is grabbed from the executor
 type Persister interface {
-	Persist(bps []client.BatchPoints) error
+	Persist(bps client.BatchPoints) error
 	SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error
 }
 
@@ -60,7 +60,7 @@ func (f *Controller) RunInstructions(persister Persister, dropletId int, halt ch
 	}
 }
 
-func (f *Controller) runScript(dropletId int, halt chan struct{}) ([]client.BatchPoints, error) {
+func (f *Controller) runScript(dropletId int, halt chan struct{}) (client.BatchPoints, error) {
 	jobChannel := make(chan struct{}, f.Command.MaxRequestsPerSecond)
 	done := make(chan struct{})
 	var completeChannels []chan struct{}
@@ -112,10 +112,10 @@ func (f *Controller) runScript(dropletId int, halt chan struct{}) ([]client.Batc
 		select {
 		case <-halt:
 			close(jobChannel)
-			return stopWorkers(completeChannels, metricsList, &wg), nil
+			return stopWorkers(completeChannels, metricsList, &wg)
 		case <-done:
 			close(jobChannel)
-			return stopWorkers(completeChannels, metricsList, &wg), nil
+			return stopWorkers(completeChannels, metricsList, &wg)
 
 		case <-ticker.C:
 			for i := 1; i < iterations; i++ {
@@ -141,17 +141,23 @@ func (f *Controller) runScript(dropletId int, halt chan struct{}) ([]client.Batc
 
 }
 
-func stopWorkers(completeChannels []chan struct{}, metricsList []*MetricsGatherer, wg *sync.WaitGroup) []client.BatchPoints {
+func stopWorkers(completeChannels []chan struct{}, metricsList []*MetricsGatherer, wg *sync.WaitGroup) (client.BatchPoints, error) {
 	log.Println("Ending load test")
 	for _, workerDoneChannel := range completeChannels {
 		close(workerDoneChannel)
 	}
 	wg.Wait()
-	var bps []client.BatchPoints
-	for _, metric := range metricsList {
-		bps = append(bps, metric.BatchPoints)
+	conf := client.BatchPointsConfig{}
+	bps, err := client.NewBatchPoints(conf)
+	if err != nil {
+		return nil, err
 	}
-	return bps
+	for _, metric := range metricsList {
+		for _, bp := range metric.BatchPoints.Points() {
+			bps.AddPoint(bp)
+		}
+	}
+	return bps, nil
 }
 
 func getNumberOfIterations(tickTimer time.Duration, requestsPerSecond int) int {
