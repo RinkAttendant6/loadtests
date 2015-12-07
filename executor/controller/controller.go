@@ -126,14 +126,7 @@ func (f *Controller) runScript(dropletId int, persister Persister, halt chan str
 			}
 			if totalIterations > numSavedExecutions {
 				totalIterations = 0
-				bps, err := getBatchPoints(metricsList)
-				if err != nil {
-					log.Printf("Error getting batch points: %v\n", err)
-				}
-				err = sendBatchPoints(persister, bps)
-				if err != nil {
-					log.Printf("Error sending batch points: %v\n", err)
-				}
+				go sendData(metricsList, persister)
 			}
 		case <-growthTicker.C:
 			if growthActive {
@@ -150,6 +143,16 @@ func (f *Controller) runScript(dropletId int, persister Persister, halt chan str
 		}
 	}
 
+}
+func sendData(metricsList []*MetricsGatherer, persister Persister) {
+	bps, err := getBatchPoints(metricsList)
+	if err != nil {
+		log.Printf("Error getting batch points: %v\n", err)
+	}
+	err = sendBatchPoints(persister, bps)
+	if err != nil {
+		log.Printf("Error sending batch points: %v\n", err)
+	}
 }
 
 func stopWorkers(completeChannels []chan struct{}, metricsList []*MetricsGatherer, wg *sync.WaitGroup) (client.BatchPoints, error) {
@@ -187,7 +190,7 @@ func sendBatchPoints(persister Persister, bps client.BatchPoints) error {
 		if err == nil {
 			return nil
 		}
-		log.Printf("Failed presist attempt. number: %d err: %v", numTries, err)
+		log.Printf("Failed persist attempt. number: %d err: %v", numTries, err)
 		if numTries > maxRetries {
 			return err
 		}
