@@ -37,7 +37,6 @@ var (
 	scriptConfigFlag  = cli.StringFlag{Name: "script.config", Usage: "if specified, the file where the source of the config can be found.", Value: ""}
 	runTimeFlag       = cli.DurationFlag{Name: "duration", Value: time.Minute, Usage: "how long to perform the load test for"}
 	maxExecPerSecFlag = cli.IntFlag{Name: "max.exec.ps", Value: 100, Usage: "number of executions per second"}
-	maxWorkersFlag    = cli.IntFlag{Name: "max.workers", Value: 100, Usage: "number of execution threads"}
 
 	growthFactorFlag              = cli.Float64Flag{Name: "extra.growth.factor", Value: 1.5}
 	timeBetweenGrowthFlag         = cli.DurationFlag{Name: "extra.time.between.growth", Value: time.Second}
@@ -69,7 +68,6 @@ func newApp() *cli.App {
 		scriptConfigFlag,
 		runTimeFlag,
 		maxExecPerSecFlag,
-		maxWorkersFlag,
 		growthFactorFlag,
 		timeBetweenGrowthFlag,
 		startingRequestsPerSecondFlag,
@@ -102,7 +100,6 @@ func newApp() *cli.App {
 			ScriptName:                ctx.GlobalString(scriptNameFlag.Name),
 			Script:                    string(script),
 			MaxRequestsPerSecond:      int32(ctx.GlobalInt(maxExecPerSecFlag.Name)),
-			MaxWorkers:                int32(ctx.GlobalInt(maxWorkersFlag.Name)),
 			RunTime:                   int32(ctx.GlobalDuration(runTimeFlag.Name).Seconds()),
 			GrowthFactor:              ctx.Float64(growthFactorFlag.Name),
 			TimeBetweenGrowth:         ctx.Duration(timeBetweenGrowthFlag.Name).Seconds(),

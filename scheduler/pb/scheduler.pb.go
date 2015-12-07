@@ -35,7 +35,6 @@ type LoadTestReq struct {
 	Script                    string  `protobuf:"bytes,2,opt,name=script" json:"script,omitempty"`
 	ScriptName                string  `protobuf:"bytes,3,opt,name=script_name" json:"script_name,omitempty"`
 	RunTime                   int32   `protobuf:"varint,4,opt,name=run_time" json:"run_time,omitempty"`
-	MaxWorkers                int32   `protobuf:"varint,6,opt,name=max_workers" json:"max_workers,omitempty"`
 	GrowthFactor              float64 `protobuf:"fixed64,8,opt,name=growth_factor" json:"growth_factor,omitempty"`
 	TimeBetweenGrowth         float64 `protobuf:"fixed64,9,opt,name=time_between_growth" json:"time_between_growth,omitempty"`
 	StartingRequestsPerSecond int32   `protobuf:"varint,10,opt,name=starting_requests_per_second" json:"starting_requests_per_second,omitempty"`
