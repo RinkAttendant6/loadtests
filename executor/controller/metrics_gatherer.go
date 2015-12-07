@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"sync"
 	"time"
 
 	client "github.com/influxdb/influxdb/client/v2"
@@ -12,6 +13,7 @@ type MetricsGatherer struct {
 	DropletId   int
 	WorkerId    int32
 	TestId      int
+	Mutex       *sync.Mutex
 }
 
 func NewMetricsGatherer(scriptId string, dropletId int, workerId int32) (*MetricsGatherer, error) {
@@ -21,10 +23,28 @@ func NewMetricsGatherer(scriptId string, dropletId int, workerId int32) (*Metric
 		return nil, err
 	}
 	return &MetricsGatherer{BatchPoints: bps, ScriptId: scriptId,
-		DropletId: dropletId, WorkerId: workerId, TestId: 0}, nil
+		DropletId: dropletId, WorkerId: workerId, TestId: 0, Mutex: &sync.Mutex{}}, nil
+}
+
+func (m *MetricsGatherer) ClearBatchPoints() (client.BatchPoints, error) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
+
+	bps := m.BatchPoints
+
+	conf := client.BatchPointsConfig{}
+	newBps, err := client.NewBatchPoints(conf)
+	if err != nil {
+		return nil, err
+	}
+	m.BatchPoints = newBps
+
+	return bps, nil
 }
 
 func (m *MetricsGatherer) IncrScriptExecution() {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("ExecutionExecutionTable",
 		nil,
 		map[string]interface{}{
@@ -37,6 +57,8 @@ func (m *MetricsGatherer) IncrScriptExecution() {
 }
 
 func (m *MetricsGatherer) IncrStepExecution(step string, dur time.Duration) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("StepExecutionTable",
 		nil,
 		map[string]interface{}{
@@ -52,6 +74,8 @@ func (m *MetricsGatherer) IncrStepExecution(step string, dur time.Duration) {
 }
 
 func (m *MetricsGatherer) IncrStepError(step string) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("StepErrorTable",
 		nil,
 		map[string]interface{}{
@@ -66,6 +90,8 @@ func (m *MetricsGatherer) IncrStepError(step string) {
 }
 
 func (m *MetricsGatherer) IncrHTTPGet(url string, code int, duration time.Duration) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("GetRequestTable",
 		nil,
 		map[string]interface{}{
@@ -82,6 +108,8 @@ func (m *MetricsGatherer) IncrHTTPGet(url string, code int, duration time.Durati
 }
 
 func (m *MetricsGatherer) IncrHTTPPost(url string, code int, duration time.Duration) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("PostRequestTable",
 		nil,
 		map[string]interface{}{
@@ -98,6 +126,8 @@ func (m *MetricsGatherer) IncrHTTPPost(url string, code int, duration time.Durat
 }
 
 func (m *MetricsGatherer) IncrHTTPError(url string) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("ErrorRequestTable",
 		nil,
 		map[string]interface{}{
@@ -119,6 +149,8 @@ func (m *MetricsGatherer) IncrLogFatal(msg interface{}) {
 }
 
 func (m *MetricsGatherer) AddLuaError(err error) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("LuaErrorTable",
 		nil,
 		map[string]interface{}{
@@ -131,7 +163,10 @@ func (m *MetricsGatherer) AddLuaError(err error) {
 		time.Now(),
 	))
 }
+
 func (m *MetricsGatherer) logMsg(msg interface{}, level string) {
+	m.Mutex.Lock()
+	defer m.Mutex.Unlock()
 	m.BatchPoints.AddPoint(client.NewPoint("LogTable",
 		nil,
 		map[string]interface{}{

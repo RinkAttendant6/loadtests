@@ -27,6 +27,11 @@ type Persister interface {
 	SetupPersister(influxIP string, user string, pass string, database string, useSsl bool) error
 }
 
+var (
+	maxRetries         = 10
+	numSavedExecutions = 1000
+)
+
 // RunInstructions will get the IP from the file it found and send it to the pinger
 func (f *Controller) RunInstructions(persister Persister, dropletId int, halt chan struct{}) error {
 	script := strings.NewReader(f.Command.Script)
@@ -43,24 +48,14 @@ func (f *Controller) RunInstructions(persister Persister, dropletId int, halt ch
 			return err
 		}
 	}
-	metrics, err := f.runScript(dropletId, halt)
+	bps, err := f.runScript(dropletId, persister, halt)
 	if err != nil {
 		return err
 	}
-	numTries := 0
-	for {
-		err := persister.Persist(metrics)
-		if err == nil {
-			return nil
-		}
-		log.Println("Failed presist attempt. number: %d err: %v", numTries, err)
-		if numTries > 10 {
-			return err
-		}
-	}
+	return sendBatchPoints(persister, bps)
 }
 
-func (f *Controller) runScript(dropletId int, halt chan struct{}) (client.BatchPoints, error) {
+func (f *Controller) runScript(dropletId int, persister Persister, halt chan struct{}) (client.BatchPoints, error) {
 	jobChannel := make(chan struct{}, f.Command.MaxRequestsPerSecond)
 	done := make(chan struct{})
 	var completeChannels []chan struct{}
@@ -107,6 +102,7 @@ func (f *Controller) runScript(dropletId int, halt chan struct{}) (client.BatchP
 		close(done)
 	}()
 
+	totalIterations := 0
 	for {
 	select_again:
 		select {
@@ -118,11 +114,25 @@ func (f *Controller) runScript(dropletId int, halt chan struct{}) (client.BatchP
 			return stopWorkers(completeChannels, metricsList, &wg)
 
 		case <-ticker.C:
+			totalIterations = totalIterations + iterations
 			for i := 1; i < iterations; i++ {
 				select {
 				case jobChannel <- struct{}{}:
 				case <-done:
 					break select_again
+				case <-halt:
+					break select_again
+				}
+			}
+			if totalIterations > numSavedExecutions {
+				totalIterations = 0
+				bps, err := getBatchPoints(metricsList)
+				if err != nil {
+					log.Printf("Error getting batch points: %v\n", err)
+				}
+				err = sendBatchPoints(persister, bps)
+				if err != nil {
+					log.Printf("Error sending batch points: %v\n", err)
 				}
 			}
 		case <-growthTicker.C:
@@ -136,6 +146,7 @@ func (f *Controller) runScript(dropletId int, halt chan struct{}) (client.BatchP
 				// The number of jobs per tick will now have increased
 				iterations = getNumberOfIterations(tickTimer, requestsPerSecond)
 			}
+
 		}
 	}
 
@@ -147,17 +158,41 @@ func stopWorkers(completeChannels []chan struct{}, metricsList []*MetricsGathere
 		close(workerDoneChannel)
 	}
 	wg.Wait()
+	return getBatchPoints(metricsList)
+}
+
+func getBatchPoints(metricsList []*MetricsGatherer) (client.BatchPoints, error) {
 	conf := client.BatchPointsConfig{}
 	bps, err := client.NewBatchPoints(conf)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, metric := range metricsList {
-		for _, bp := range metric.BatchPoints.Points() {
+		subBps, err := metric.ClearBatchPoints()
+		if err != nil {
+			return nil, err
+		}
+		for _, bp := range subBps.Points() {
 			bps.AddPoint(bp)
 		}
 	}
 	return bps, nil
+}
+
+func sendBatchPoints(persister Persister, bps client.BatchPoints) error {
+	numTries := 0
+	for {
+		err := persister.Persist(bps)
+		if err == nil {
+			return nil
+		}
+		log.Printf("Failed presist attempt. number: %d err: %v", numTries, err)
+		if numTries > maxRetries {
+			return err
+		}
+		numTries++
+	}
 }
 
 func getNumberOfIterations(tickTimer time.Duration, requestsPerSecond int) int {
