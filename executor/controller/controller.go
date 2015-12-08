@@ -126,7 +126,7 @@ func (f *Controller) runScript(dropletId int, persister Persister, halt chan str
 			}
 			if totalIterations > numSavedExecutions {
 				totalIterations = 0
-				go sendData(metricsList, persister)
+				go sendData(metricsList, persister, &wg)
 			}
 		case <-growthTicker.C:
 			if growthActive {
@@ -144,7 +144,9 @@ func (f *Controller) runScript(dropletId int, persister Persister, halt chan str
 	}
 
 }
-func sendData(metricsList []*MetricsGatherer, persister Persister) {
+func sendData(metricsList []*MetricsGatherer, persister Persister, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
 	bps, err := getBatchPoints(metricsList)
 	if err != nil {
 		log.Printf("Error getting batch points: %v\n", err)
