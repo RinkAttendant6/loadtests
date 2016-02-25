@@ -1,0 +1,17 @@
+{
+  "name": "loadtests-cli",
+  "version": "1.0.0",
+  "description": "Command-line interface for interacting with loadtests",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "grpc": "^0.13.0",
+    "inquirer": "^0.12.0",
+    "minimist": "^1.2.0",
+    "randomstring": "^1.1.4",
+    "sprintf-js": "^1.0.3"
+  },
+  "devDependencies": {
+    "jshint": "^2.9.1"
+  }
+}
